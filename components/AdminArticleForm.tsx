@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrowserSupabase } from '../lib/supabase-browser';
+import ContentToolbar from './admin/ContentToolbar';
 
 type Category = { id: number; slug: string; name_en: string | null };
 
@@ -410,7 +411,9 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
 
       <label style={{ display: 'grid', gap: 6 }}>
         <span>Content (HTML allowed)</span>
+        <ContentToolbar textareaId="article-content-editor" bucket="media" />
         <textarea
+          id="article-content-editor"
           rows={14}
           value={content}
           onChange={(e) => setContent(e.target.value)}

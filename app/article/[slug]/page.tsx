@@ -40,7 +40,7 @@ export default async function ArticlePage({ params }: { params: Params }) {
 
   const supabase = getSupabase();
   // Select common cover fields so we can support whatever your table has
-  const { data: article, error } = await supabase
+  let query = supabase
     .from('articles')
     .select(
       [
@@ -59,9 +59,14 @@ export default async function ArticlePage({ params }: { params: Params }) {
         'image_alt',
       ].join(', ')
     )
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .maybeSingle();
+    .eq('slug', slug);
+
+  // In development, show drafts too; in production, only published
+  if (process.env.NODE_ENV === 'production') {
+    query = query.eq('status', 'published');
+  }
+
+  const { data: article, error } = await query.maybeSingle();
 
   if (error || !article) {
     notFound();
