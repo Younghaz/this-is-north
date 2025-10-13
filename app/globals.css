@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --brand: #1FA34A; }
+
+html, body {
+  background: #fff;
+  color: #111;
+}
+
+a { color: var(--brand); }
+
+/* Keep images inside article content readable and bounded */
+.article-body img {
+  max-width: 100%;
+  height: auto;
+  max-height: 560px; /* adjust to taste */
+  display: block;
+  margin: 12px auto;
+  background: #f6f6f6;
+  border-radius: 6px;
+  border: 1px solid #eaeaea;
+  object-fit: contain; /* useful when max-height kicks in */
+}
+
+/* Optional: constrain iframes and videos embedded inside content HTML */
+.article-body iframe,
+.article-body video {
+  max-width: 100%;
+  display: block;
+  margin: 12px auto;
+  border: none;
+  border-radius: 6px;
+}
