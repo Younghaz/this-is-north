@@ -5,30 +5,23 @@ import LikeButton from '@/components/LikeButton';
 import CommentsList from '@/components/CommentsList';
 import CommentForm from '@/components/CommentForm';
 import CommentsRealtime from '@/components/CommentsRealtime';
+import FocusCommentOnHash from '@/components/FocusCommentOnHash';
 import { getSupabase } from '@/lib/supabase';
-import { normalizeArticleHtml } from '@/lib/content-normalize';
+import { publicStorageUrl } from '@/lib/public-url';
+import ShareButton from '@/components/ShareButton';
 
-// Safe import of sanitizer (use a tiny fallback if package isn't installed)
-let sanitizeArticleHtml: (s: string) => string = (s) => s;
+// 🔹 Simple sanitizer fallback (no iframes)
+let sanitizeArticleHtml: (s: string) => string = (s) =>
+  (s || '').replace(/<\/?(script|style)[^>]*>/gi, '');
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { sanitizeArticleHtml: realSanitize } = require('@/lib/sanitize');
   sanitizeArticleHtml = realSanitize;
-} catch {
-  // minimal fallback – allows rendering while you install sanitize-html
-  sanitizeArticleHtml = (s) =>
-    (s || '')
-      .replace(/<\/?(script|style)[^>]*>/gi, '')
-      .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '');
-}
+} catch {}
 
-// Normalize a single URL: convert signed storage URL -> public URL
-function toPublicStorageUrl(url: string | null | undefined) {
-  if (!url) return '';
-  return url.replace(
-    /(https?:\/\/[^"'\s]+\/storage\/v1\/object)\/sign\/([^"'\s?]+)(\?[^"'\s"]*)?/,
-    (_m, base, key) => `${base}/public/${key}`
-  );
+// 🔹 Helper for DiceBear avatar placeholders
+function avatarPlaceholder(name?: string | null) {
+  const seed = encodeURIComponent(name || 'User');
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
 }
 
 export const dynamic = 'force-dynamic';
@@ -37,91 +30,120 @@ type Params = Promise<{ slug: string }>;
 
 export default async function ArticlePage({ params }: { params: Params }) {
   const { slug } = await params;
-
   const supabase = getSupabase();
-  // Select common cover fields so we can support whatever your table has
-  let query = supabase
+
+  // 🧠 Fetch article + author profile join
+  const { data: article, error } = await supabase
     .from('articles')
-    .select(
-      [
-        'id',
-        'slug',
-        'title',
-        'content',
-        'published_at',
-        'status',
-        // cover variants (any that exist in your schema will be populated)
-        'cover_url',
-        'cover_image_url',
-        'cover_image',
-        'image_url',
-        'cover_alt',
-        'image_alt',
-      ].join(', ')
-    )
-    .eq('slug', slug);
+    .select(`
+      id,
+      slug,
+      title,
+      content,
+      status,
+      published_at,
+      cover_image_path,
+      cover_image_alt,
+      video_url,
+      video_path,
+      profiles:author_id (display_name, avatar_url)
+    `)
+    .eq('slug', slug)
+    .maybeSingle();
 
-  // In development, show drafts too; in production, only published
-  if (process.env.NODE_ENV === 'production') {
-    query = query.eq('status', 'published');
-  }
+  if (error || !article) notFound();
 
-  const { data: article, error } = await query.maybeSingle();
+  // 🧩 Video or image sources
+  const videoSrc =
+    article.video_url ||
+    (article.video_path ? publicStorageUrl('videos', article.video_path) : '');
 
-  if (error || !article) {
-    notFound();
-  }
+  const heroSrc = article.cover_image_path
+    ? publicStorageUrl('images', article.cover_image_path)
+    : '';
 
-  // Pick whichever cover field exists
-  const coverUrlRaw =
-    (article as any).cover_url ||
-    (article as any).cover_image_url ||
-    (article as any).cover_image ||
-    (article as any).image_url ||
-    null;
+  const coverAlt = article.cover_image_alt || article.title || 'Cover image';
+  const contentHtml = sanitizeArticleHtml(article.content || '');
 
-  const coverAlt =
-    (article as any).cover_alt || (article as any).image_alt || article.title || 'Cover image';
-
-  // Convert any signed URL to a public URL for the hero image
-  const heroSrc = toPublicStorageUrl(coverUrlRaw);
-
-  // 1) Normalize content (YouTube embeds + Supabase signed URLs -> public)
-  const normalized = normalizeArticleHtml(article.content || '');
-  // 2) Sanitize (or pass-through via the tiny fallback above)
-  const contentHtml = sanitizeArticleHtml(normalized);
+  // 👤 Author info
+  const author = (article as any).profiles;
+  const authorName = author?.display_name || 'Guest Author';
+  const avatarUrl =
+    author?.avatar_url || avatarPlaceholder(author?.display_name);
 
   return (
     <main className="prose max-w-3xl py-6">
       <h1>{article.title}</h1>
 
-      {/* Render hero image if provided */}
-      {heroSrc ? (
+      {/* 👤 Author info */}
+      <div className="not-prose mb-6 flex items-center gap-3">
+        <img
+          src={avatarUrl}
+          alt={authorName}
+          width={40}
+          height={40}
+          style={{
+            borderRadius: '50%',
+            objectFit: 'cover',
+            width: 40,
+            height: 40,
+            border: '1px solid #ddd',
+          }}
+        />
+        <div>
+          <div style={{ fontWeight: 600 }}>{authorName}</div>
+          {article.published_at && (
+            <div style={{ fontSize: 12, color: '#777' }}>
+              {new Date(article.published_at).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 🎥 Video or 🖼️ Cover image */}
+      {videoSrc ? (
         <div className="not-prose my-4">
-          {/* Use plain img so we don't depend on next/image config */}
+          <video
+            controls
+            playsInline
+            preload="metadata"
+            style={{ width: '100%', maxHeight: '80vh', borderRadius: 8 }}
+            src={videoSrc}
+          />
+        </div>
+      ) : heroSrc ? (
+        <div className="not-prose my-4">
           <img
             src={heroSrc}
             alt={coverAlt}
             loading="eager"
             decoding="async"
-            style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }}
+            style={{
+              width: '100%',
+              height: 'auto',
+              maxHeight: '80vh',
+              objectFit: 'contain',
+              borderRadius: 8,
+              display: 'block',
+            }}
           />
         </div>
       ) : null}
 
+      {/* 💬 Actions: Like + Share */}
       <div className="not-prose mb-4 flex items-center gap-4">
         <LikeButton articleId={article.id} />
-        <Link className="text-sm" href={`/profile/admin`}>
-          @admin
-        </Link>
+        <ShareButton slug={article.slug} title={article.title} />
       </div>
 
       <AdSenseSlot slot="0000000000" />
 
-      {/* Main article content (images/videos inside content will show) */}
+      {/* 📄 Article content */}
       <article dangerouslySetInnerHTML={{ __html: contentHtml }} />
 
-      <section className="mt-8 not-prose space-y-4">
+      {/* 🗨️ Comments section */}
+      <FocusCommentOnHash textareaId="comment-input" />
+      <section id="comments" className="mt-8 not-prose space-y-4">
         <h2 className="text-xl font-semibold">Comments</h2>
         <CommentsRealtime articleId={article.id} />
         <CommentForm articleId={article.id} />

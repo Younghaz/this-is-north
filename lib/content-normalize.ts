@@ -1,17 +1,30 @@
 // Normalizes article HTML before rendering:
-// - Converts YouTube watch/youtu.be/shorts links or iframes with "watch" to proper embed iframes
-// - Rewrites Supabase signed URLs to public URLs (works when the bucket is public)
+// - Converts Supabase signed URLs to public URLs
+// - Converts relative storage keys in img/video/source src attributes to absolute public URLs
+// - Converts YouTube watch/youtu.be/shorts links or iframes using watch?v= to proper embed iframes
+import { publicStorageUrl } from './storage-url';
+
 export function normalizeArticleHtml(html: string): string {
   if (!html) return html;
   let out = html;
 
-  // Rewrite Supabase signed URLs -> public URLs
+  // 1) Rewrite Supabase signed URLs -> public URLs
   out = out.replace(
     /(https?:\/\/[^"'\s]+\/storage\/v1\/object)\/sign\/([^"'\s?]+)(\?[^"'\s"]*)?/g,
     (_m, base, key) => `${base}/public/${key}`
   );
 
-  // Normalize YouTube iframes using watch?v=
+  // 2) Convert relative storage keys in src="" to absolute public URLs.
+  // Only touch img, video, and source tags.
+  out = out.replace(
+    /<(img|video|source)\b([^>]*?\s)src=["']([^"']+)["']([^>]*)>/gi,
+    (_m, tag, pre, src, post) => {
+      const abs = publicStorageUrl(src);
+      return `<${tag}${pre}src="${abs}"${post}>`;
+    }
+  );
+
+  // 3) Normalize YouTube iframes using watch?v= to embed
   out = out.replace(
     /<iframe([^>]*?)src=["']https?:\/\/(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})[^"']*["']([^>]*)><\/iframe>/g,
     (_m, pre, id, post) => youtubeEmbedIframe(id, `${pre} ${post}`)

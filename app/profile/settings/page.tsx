@@ -1,0 +1,243 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { getBrowserSupabase } from '@/lib/supabase-browser';
+
+type Profile = {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+export default function ProfileSettingsPage() {
+  const supabase = getBrowserSupabase();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+
+  const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // 1. Auth user
+        const { data: authData, error: authErr } = await supabase.auth.getUser();
+        if (authErr) throw authErr;
+        const u = authData.user;
+        if (!u) {
+          setError('You must be signed in to edit your profile.');
+          return;
+        }
+        if (cancelled) return;
+        setUserId(u.id);
+        setEmail(u.email ?? null);
+
+        // 2. Fetch profile row
+        const { data: prof, error: profErr } = await supabase
+          .from('profiles')
+          .select('id, display_name, avatar_url')
+          .eq('id', u.id)
+          .maybeSingle();
+        if (profErr) throw profErr;
+
+        if (prof) {
+          setDisplayName(prof.display_name || '');
+          setAvatarUrl(prof.avatar_url || null);
+        } else {
+          // Optionally create a blank profile row if not found
+          await supabase.from('profiles').insert({ id: u.id }).select().single();
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || 'Failed to load profile.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  function onPickAvatar(file: File | null) {
+    if (!file) {
+      setAvatarPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setAvatarPreview(url);
+    setDirty(true);
+  }
+
+  async function handleSubmit(ev: React.FormEvent) {
+    ev.preventDefault();
+    if (!userId) return;
+    setError(null);
+    setSaving(true);
+
+    const form = ev.currentTarget as HTMLFormElement;
+    const fileInput = form.querySelector<HTMLInputElement>('#avatarFile');
+    const file = fileInput?.files?.[0] || null;
+
+    try {
+      let finalAvatarUrl = avatarUrl;
+
+      // Upload avatar if a new file selected
+      if (file) {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('avatars')
+          .upload(path, file, {
+            upsert: false,
+            cacheControl: '3600',
+            contentType: file.type,
+          });
+        if (uploadErr) throw uploadErr;
+
+        const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+        finalAvatarUrl = data.publicUrl;
+      }
+
+      const updatePayload: Partial<Profile> = {
+        display_name: displayName.trim() || null,
+        avatar_url: finalAvatarUrl,
+      };
+
+      const { error: upErr } = await supabase
+        .from('profiles')
+        .update(updatePayload)
+        .eq('id', userId);
+      if (upErr) throw upErr;
+
+      setAvatarUrl(finalAvatarUrl || null);
+      setDirty(false);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save profile.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="max-w-md py-6">
+        <h1 className="text-xl font-semibold mb-4">Profile Settings</h1>
+        <p>Loading…</p>
+      </main>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <main className="max-w-md py-6">
+        <h1 className="text-xl font-semibold mb-4">Profile Settings</h1>
+        {error ? <p className="text-red-600">{error}</p> : <p>You are not signed in.</p>}
+      </main>
+    );
+  }
+
+  const previewSrc = avatarPreview || avatarUrl;
+
+  return (
+    <main className="max-w-md py-6">
+      <h1 className="text-xl font-semibold mb-4">Profile Settings</h1>
+
+      {error ? (
+        <div className="mb-4 text-sm text-red-600 border border-red-300 bg-red-50 p-2 rounded">
+          {error}
+        </div>
+      ) : null}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Email (readonly) */}
+        <div className="space-y-1">
+          <label className="block text-sm font-medium">Email</label>
+            <input
+              value={email || ''}
+              readOnly
+              className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
+            />
+        </div>
+
+        {/* Display Name */}
+        <div className="space-y-1">
+          <label className="block text-sm font-medium">Display Name</label>
+          <input
+            value={displayName}
+            onChange={(e) => {
+              setDisplayName(e.target.value);
+              setDirty(true);
+            }}
+            maxLength={80}
+            placeholder="e.g. Amina Bello"
+            className="w-full border rounded px-3 py-2"
+          />
+          <p className="text-xs text-gray-500">
+            Shown in feed & comments. Leave blank to fall back to username.
+          </p>
+        </div>
+
+        {/* Avatar Upload */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Avatar</label>
+          {previewSrc ? (
+            <img
+              src={previewSrc}
+              alt="Avatar preview"
+              className="w-24 h-24 rounded-full object-cover border"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-full flex items-center justify-center bg-gray-200 text-gray-500 text-sm">
+              No avatar
+            </div>
+          )}
+          <input
+            id="avatarFile"
+            type="file"
+            accept="image/*"
+            onChange={(e) => onPickAvatar(e.target.files?.[0] || null)}
+            className="block text-sm"
+          />
+          <p className="text-xs text-gray-500">
+            Recommended: square image (e.g. 256x256). Max a few MB.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={saving || !dirty}
+            className={`px-4 py-2 rounded text-white ${
+              saving || !dirty ? 'bg-gray-400' : 'bg-brand hover:brightness-110'
+            }`}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            disabled={saving || !dirty}
+            onClick={() => {
+              setAvatarPreview(null);
+              setDirty(false);
+            }}
+            className="px-4 py-2 rounded border"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
+    </main>
+  );
+}

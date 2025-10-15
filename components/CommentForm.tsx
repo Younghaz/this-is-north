@@ -53,19 +53,16 @@ export default function CommentForm({ articleId }: { articleId: number }) {
     if (text.length < 2) return setError('Comment is too short.');
     if (text.length > 2000) return setError('Comment is too long (max 2000 chars).');
 
-    // Clear input immediately; do not show a busy state
     setBody('');
 
-    // Fire-and-forget insert; do not await. Log any errors.
     supabase
       .from('comments')
-      .insert({ article_id: articleId, user_id: userId, body: text }, { returning: 'minimal' })
+      .insert({ article_id: articleId, user_id: userId, body: text, status: 'visible' }, { returning: 'minimal' })
       .then(({ error }) => {
         if (error) {
           console.error('Comment insert error:', error);
           setError(error.message);
         }
-        // Force a refresh so the server-rendered list re-fetches
         router.refresh();
       })
       .catch((e) => {
@@ -74,13 +71,13 @@ export default function CommentForm({ articleId }: { articleId: number }) {
         router.refresh();
       });
 
-    // Nudge a refresh quickly too (helps in slow dev)
     setTimeout(() => router.refresh(), 300);
   }
 
   return (
     <div className="space-y-2">
       <textarea
+        id="comment-input"
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={4}

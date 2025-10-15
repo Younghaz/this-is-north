@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrowserSupabase } from '../lib/supabase-browser';
-import ContentToolbar from './admin/ContentToolbar';
 
 type Category = { id: number; slug: string; name_en: string | null };
 
@@ -18,8 +17,8 @@ type ArticleRow = {
   // media
   cover_image_path: string | null;
   cover_image_alt: string | null;
-  video_provider: 'youtube' | 'file' | null;
-  video_url: string | null;  // youtube embed OR public file url
+  video_provider: 'file' | null;
+  video_url: string | null;  // public file url
   video_path: string | null; // storage path for uploaded file
 };
 
@@ -30,56 +29,7 @@ type Props = {
 
 // ----- helpers -----
 function slugify(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
-}
-
-// ✅ REPLACED FUNCTION — robust YouTube URL parser
-function parseYouTubeToEmbed(raw: string): string | null {
-  if (!raw) return null;
-  let url = raw.trim();
-
-  // If someone pasted just a YouTube ID
-  if (/^[A-Za-z0-9_-]{10,}$/.test(url)) {
-    return `https://www.youtube.com/embed/${url}`;
-  }
-
-  try {
-    // Normalize subdomains
-    url = url
-      .replace(/^https?:\/\/(m\.|music\.)?youtube\.com\//, 'https://www.youtube.com/')
-      .replace(/^https?:\/\/(www\.)?youtu\.be\//, 'https://youtu.be/');
-
-    const u = new URL(url);
-
-    // Short link
-    if (u.hostname.includes('youtu.be')) {
-      const id = u.pathname.replace(/^\//, '').split(/[/?#]/)[0];
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-
-    // Full youtube.com URLs
-    if (u.hostname.includes('youtube.com')) {
-      if (u.pathname.startsWith('/shorts/')) {
-        const id = u.pathname.split('/')[2]?.split(/[/?#]/)[0];
-        return id ? `https://www.youtube.com/embed/${id}` : null;
-      }
-      if (u.pathname.startsWith('/live/')) {
-        const id = u.pathname.split('/')[2]?.split(/[/?#]/)[0];
-        return id ? `https://www.youtube.com/embed/${id}` : null;
-      }
-      if (u.pathname.includes('/embed/')) {
-        return u.toString();
-      }
-      const id = u.searchParams.get('v');
-      if (id) return `https://www.youtube.com/embed/${id}`;
-    }
-  } catch {
-    // ignore parse errors
-  }
-  return null;
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 }
 
 async function uploadToBucket(supabase: any, bucket: 'images' | 'videos', file: File, prefix = '') {
@@ -105,7 +55,6 @@ type MediaState = {
   coverImageAlt: string;
   videoFile: File | null;
   videoPreview: string | null;
-  youtubeUrl: string;
 };
 
 function MediaInputs(props: { value: MediaState; onChange: (v: MediaState) => void }) {
@@ -123,7 +72,6 @@ function MediaInputs(props: { value: MediaState; onChange: (v: MediaState) => vo
       ...value,
       videoFile: f,
       videoPreview: f ? URL.createObjectURL(f) : null,
-      youtubeUrl: f ? '' : value.youtubeUrl,
     });
   }
 
@@ -154,20 +102,10 @@ function MediaInputs(props: { value: MediaState; onChange: (v: MediaState) => vo
         />
       </div>
 
-      {/* Video */}
+      {/* Video (no YouTube; file upload only) */}
       <div style={{ marginBottom: 12 }}>
         <label style={{ display: 'block', fontSize: 14, marginBottom: 6 }}>Video (optional)</label>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            placeholder="YouTube URL (https://youtu.be/...)"
-            value={value.youtubeUrl}
-            onChange={(e) =>
-              onChange({ ...value, youtubeUrl: e.target.value, videoFile: null, videoPreview: null })
-            }
-            style={{ flex: 1, minWidth: 260, padding: 6 }}
-          />
-          <span>or</span>
-          {/* ✅ now allows all video types */}
           <input type="file" accept="video/*" onChange={(e) => onPickVideo(e.target.files?.[0] ?? null)} />
         </div>
         {value.videoPreview && (
@@ -204,7 +142,6 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
     coverImageAlt: '',
     videoFile: null,
     videoPreview: null,
-    youtubeUrl: '',
   });
 
   const [existingMedia, setExistingMedia] = useState({
@@ -293,15 +230,8 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
         payload.cover_image_alt = media.coverImageAlt || existingMedia.cover_image_alt || '';
       }
 
-      // Video
-      const you = media.youtubeUrl.trim();
-      if (you) {
-        const embed = parseYouTubeToEmbed(you);
-        if (!embed) throw new Error('Invalid YouTube URL');
-        payload.video_provider = 'youtube';
-        payload.video_url = embed;
-        payload.video_path = null;
-      } else if (media.videoFile) {
+      // Video (file only)
+      if (media.videoFile) {
         const upv = await uploadToBucket(supabase, 'videos', media.videoFile, 'articles');
         payload.video_provider = 'file';
         payload.video_url = upv.publicUrl;
@@ -317,9 +247,10 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
       }
 
       if (status === 'published') {
-        const { data: current } = articleId
-          ? await supabase.from('articles').select('published_at').eq('id', articleId).maybeSingle()
-          : { data: null as any };
+        const { data: current } =
+          articleId
+            ? await supabase.from('articles').select('published_at').eq('id', articleId).maybeSingle()
+            : { data: null as any };
         const alreadyPublished = !!current?.published_at;
         if (!alreadyPublished) {
           payload.published_at = new Date().toISOString();
@@ -411,7 +342,6 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
 
       <label style={{ display: 'grid', gap: 6 }}>
         <span>Content (HTML allowed)</span>
-        <ContentToolbar textareaId="article-content-editor" bucket="media" />
         <textarea
           id="article-content-editor"
           rows={14}

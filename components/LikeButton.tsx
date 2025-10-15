@@ -14,7 +14,7 @@ function getOrCreateDeviceId() {
   return id;
 }
 
-export default function LikeButton({ articleId }: { articleId: number }) {
+export default function LikeButton({ articleId, onLiked }: { articleId: number; onLiked?: () => void }) {
   const [state, setState] = useState<'idle' | 'loading' | 'liked'>('idle');
 
   const deviceId = useMemo(() => {
@@ -25,14 +25,12 @@ export default function LikeButton({ articleId }: { articleId: number }) {
   useEffect(() => {
     if (!articleId || !deviceId) return;
 
-    // 1) Fast local check so UI feels instant if user already liked before.
     const localKey = `liked:${articleId}`;
     if (typeof window !== 'undefined' && localStorage.getItem(localKey) === '1') {
       setState('liked');
-      return; // You can comment this out if you prefer to always confirm with the server
+      return;
     }
 
-    // 2) Confirm with server (handles cases where localStorage was cleared or used on another browser)
     const controller = new AbortController();
     (async () => {
       try {
@@ -75,6 +73,7 @@ export default function LikeButton({ articleId }: { articleId: number }) {
       if (ok || json?.ok) {
         setState('liked');
         if (typeof window !== 'undefined') localStorage.setItem(`liked:${articleId}`, '1');
+        onLiked?.();
       } else {
         setState('idle');
       }
