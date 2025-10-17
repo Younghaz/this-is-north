@@ -17,19 +17,27 @@ type Article = {
   video_url?: string | null;
   likes_count?: number | null;
   comments_count?: number | null;
+  category_id?: number | null;
   categories?: { slug: string | null; name_en: string | null } | null;
+};
+
+type Filters = {
+  categorySlug?: string | null;
+  q?: string | null;
 };
 
 type Props = {
   initialItems: Article[];
   initialNextCursor: number | null;
   pageSize?: number;
+  filters?: Filters;
 };
 
 export default function FeedInfinite({
   initialItems,
   initialNextCursor,
   pageSize = 10,
+  filters,
 }: Props) {
   const [items, setItems] = useState<Article[]>(() => initialItems || []);
   const [nextCursor, setNextCursor] = useState<number | null>(initialNextCursor);
@@ -37,7 +45,18 @@ export default function FeedInfinite({
   const [error, setError] = useState<string | null>(null);
 
   const hasMore = useMemo(() => nextCursor !== null, [nextCursor]);
-  const seen = useRef<Set<number>>(new Set(initialItems.map((a) => a.id)));
+
+  // Reset feed when filters change
+  useEffect(() => {
+    setItems(initialItems || []);
+    setNextCursor(initialNextCursor);
+  }, [initialItems, initialNextCursor, filters?.categorySlug, filters?.q]);
+
+  // Deduplicate articles by id
+  const seen = useRef<Set<number>>(new Set((initialItems || []).map((a) => a.id)));
+  useEffect(() => {
+    seen.current = new Set((initialItems || []).map((a) => a.id));
+  }, [initialItems]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loading) return;
@@ -47,10 +66,14 @@ export default function FeedInfinite({
       const params = new URLSearchParams();
       params.set('limit', String(pageSize));
       params.set('cursor', String(nextCursor));
+      if (filters?.categorySlug) params.set('category', filters.categorySlug);
+      if (filters?.q) params.set('q', filters.q);
+
       const res = await fetch(`/api/articles?${params.toString()}`);
       const json = await res.json();
-      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Failed to load');
-
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || 'Failed to load');
+      }
       const next = (json.items as Article[]) || [];
       const deduped: Article[] = [];
       for (const it of next) {
@@ -66,20 +89,20 @@ export default function FeedInfinite({
     } finally {
       setLoading(false);
     }
-  }, [hasMore, loading, nextCursor, pageSize]);
+  }, [hasMore, loading, nextCursor, pageSize, filters?.categorySlug, filters?.q]);
 
+  // IntersectionObserver for infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!hasMore) return;
     const el = sentinelRef.current;
     if (!el) return;
-
     const obs = new IntersectionObserver(
       (entries) => {
         const ent = entries[0];
         if (ent.isIntersecting) loadMore();
       },
-      { rootMargin: '1200px 0px 800px 0px', threshold: 0 }
+      { rootMargin: '1000px 0px 800px 0px', threshold: 0 }
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -87,7 +110,7 @@ export default function FeedInfinite({
 
   return (
     <div className="space-y-3">
-      <ul style={{ display: 'grid', gap: 12, padding: 0, listStyle: 'none' }}>
+      <ul className="grid gap-3 p-0 list-none">
         {items.map((a) => (
           <ArticleCard key={a.id} article={a} />
         ))}

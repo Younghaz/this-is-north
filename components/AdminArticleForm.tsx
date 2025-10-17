@@ -14,6 +14,7 @@ type ArticleRow = {
   status: 'draft' | 'published';
   category_id: number | null;
   published_at: string | null;
+  author_id?: string | null;
   // media
   cover_image_path: string | null;
   cover_image_alt: string | null;
@@ -102,7 +103,7 @@ function MediaInputs(props: { value: MediaState; onChange: (v: MediaState) => vo
         />
       </div>
 
-      {/* Video (no YouTube; file upload only) */}
+      {/* Video */}
       <div style={{ marginBottom: 12 }}>
         <label style={{ display: 'block', fontSize: 14, marginBottom: 6 }}>Video (optional)</label>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -151,6 +152,12 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
     video_url: null,
     video_path: null,
   } as any);
+
+  // STEP B — current user
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, [supabase]);
 
   // Load categories
   useEffect(() => {
@@ -263,6 +270,8 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
         const { error } = await supabase.from('articles').update(payload).eq('id', articleId);
         if (error) throw error;
       } else {
+        // include author_id on create
+        payload.author_id = currentUserId ?? null;
         const { data, error } = await supabase
           .from('articles')
           .insert(payload)

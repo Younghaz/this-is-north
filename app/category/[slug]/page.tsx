@@ -1,7 +1,6 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
-import ArticleCard from '@/components/ArticleCard';
+import FeedInfinite from '@/components/FeedInfinite';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +10,7 @@ export default async function CategoryPage({ params }: { params: Params }) {
   const { slug } = await params;
   const supabase = getSupabase();
 
-  // 1️⃣ Find the category by slug
+  // 1️⃣ Find category
   const { data: cat, error: catErr } = await supabase
     .from('categories')
     .select('id, slug, name_en, name_ha')
@@ -20,27 +19,34 @@ export default async function CategoryPage({ params }: { params: Params }) {
 
   if (catErr || !cat) notFound();
 
-  // 2️⃣ Get published articles (now includes media fields)
+  // 2️⃣ Initial articles (server-render first page)
+  const PAGE_SIZE = 10;
+  const SELECT = `
+    id,
+    slug,
+    title,
+    content,
+    excerpt,
+    published_at,
+    cover_url,
+    video_provider,
+    video_path,
+    categories:category_id (slug, name_en)
+  `;
+
   const { data: articles, error } = await supabase
     .from('articles')
-    .select(`
-      id,
-      slug,
-      title,
-      content,
-      excerpt,
-      published_at,
-      cover_url,
-      video_provider,
-      video_path,
-      categories:category_id (slug, name_en)
-    `)
+    .select(SELECT)
     .eq('status', 'published')
     .eq('category_id', cat.id)
     .order('published_at', { ascending: false })
-    .limit(20);
+    .order('id', { ascending: false })
+    .range(0, PAGE_SIZE); // inclusive -> PAGE_SIZE+1
 
   const list = articles ?? [];
+  const hasMore = (list.length ?? 0) > PAGE_SIZE;
+  const initialItems = list.slice(0, PAGE_SIZE);
+  const initialNextCursor = hasMore ? PAGE_SIZE : null;
 
   return (
     <main className="py-6 space-y-6">
@@ -54,16 +60,15 @@ export default async function CategoryPage({ params }: { params: Params }) {
         <span className="text-sm text-gray-500">/{cat.slug}</span>
       </header>
 
-      {error ? <p className="text-red-600">Error: {error.message}</p> : null}
-
-      {list.length === 0 ? (
-        <p className="text-gray-600">No articles yet in this category.</p>
+      {error ? (
+        <p className="text-red-600">Error: {error.message}</p>
       ) : (
-        <section className="grid gap-6 md:grid-cols-2">
-          {list.map((a) => (
-            <ArticleCard key={a.id} article={a} />
-          ))}
-        </section>
+        <FeedInfinite
+          initialItems={initialItems}
+          initialNextCursor={initialNextCursor}
+          pageSize={PAGE_SIZE}
+          filters={{ categorySlug: slug }}
+        />
       )}
     </main>
   );

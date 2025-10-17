@@ -1,40 +1,105 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import AdSenseSlot from '@/components/AdSenseSlot';
-import LikeButton from '@/components/LikeButton';
-import CommentsList from '@/components/CommentsList';
-import CommentForm from '@/components/CommentForm';
-import CommentsRealtime from '@/components/CommentsRealtime';
-import FocusCommentOnHash from '@/components/FocusCommentOnHash';
-import { getSupabase } from '@/lib/supabase';
-import { publicStorageUrl } from '@/lib/public-url';
-import ShareButton from '@/components/ShareButton';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import AdSenseSlot from "@/components/AdSenseSlot";
+import LikeButton from "@/components/LikeButton";
+import CommentsList from "@/components/CommentsList";
+import CommentForm from "@/components/CommentForm";
+import CommentsRealtime from "@/components/CommentsRealtime";
+import FocusCommentOnHash from "@/components/FocusCommentOnHash";
+import { getSupabase } from "@/lib/supabase";
+import { publicStorageUrl } from "@/lib/public-url";
+import ShareButton from "@/components/ShareButton";
+import HighlightOnHash from "@/components/HighlightOnHash";
+import ViewTracker from "@/components/ViewTracker"; // ✅ NEW import
 
-// 🔹 Simple sanitizer fallback (no iframes)
+// 🧩 Sanitizer fallback
 let sanitizeArticleHtml: (s: string) => string = (s) =>
-  (s || '').replace(/<\/?(script|style)[^>]*>/gi, '');
+  (s || "").replace(/<\/?(script|style)[^>]*>/gi, "");
 try {
-  const { sanitizeArticleHtml: realSanitize } = require('@/lib/sanitize');
+  const { sanitizeArticleHtml: realSanitize } = require("@/lib/sanitize");
   sanitizeArticleHtml = realSanitize;
 } catch {}
 
-// 🔹 Helper for DiceBear avatar placeholders
+// 🧩 Avatar placeholder
 function avatarPlaceholder(name?: string | null) {
-  const seed = encodeURIComponent(name || 'User');
+  const seed = encodeURIComponent(name?.trim() || "User");
   return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
 }
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 type Params = Promise<{ slug: string }>;
 
-export default async function ArticlePage({ params }: { params: Params }) {
+// 🧠 SEO Metadata
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const supabase = getSupabase();
 
-  // 🧠 Fetch article + author profile join
+  const { data: article } = await supabase
+    .from("articles")
+    .select("title, slug, content, cover_image_path, cover_image_alt")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  const site =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+    "http://localhost:3000";
+  const url = `${site}/article/${slug}`;
+
+  if (!article) {
+    return {
+      title: "Article not found",
+      description: "This article could not be found.",
+      alternates: { canonical: url },
+    };
+  }
+
+  const text = (article.content || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const description = text.length > 160 ? text.slice(0, 157) + "…" : text;
+
+  const imageUrl = article.cover_image_path
+    ? publicStorageUrl("images", article.cover_image_path)
+    : null;
+
+  return {
+    title: article.title || "This is North",
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: article.title,
+      description,
+      type: "article",
+      url,
+      siteName: "This is North",
+      images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630 }] : [],
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title: article.title,
+      description,
+      images: imageUrl ? [imageUrl] : [],
+    },
+  };
+}
+
+// 📰 Article Page
+export default async function ArticlePage({
+  params,
+}: {
+  params: Params;
+}) {
+  const { slug } = await params;
+  const supabase = getSupabase();
+
   const { data: article, error } = await supabase
-    .from('articles')
+    .from("articles")
     .select(`
       id,
       slug,
@@ -48,66 +113,70 @@ export default async function ArticlePage({ params }: { params: Params }) {
       video_path,
       profiles:author_id (display_name, avatar_url)
     `)
-    .eq('slug', slug)
+    .eq("slug", slug)
     .maybeSingle();
 
   if (error || !article) notFound();
 
-  // 🧩 Video or image sources
   const videoSrc =
     article.video_url ||
-    (article.video_path ? publicStorageUrl('videos', article.video_path) : '');
+    (article.video_path ? publicStorageUrl("videos", article.video_path) : "");
 
   const heroSrc = article.cover_image_path
-    ? publicStorageUrl('images', article.cover_image_path)
-    : '';
+    ? publicStorageUrl("images", article.cover_image_path)
+    : "";
 
-  const coverAlt = article.cover_image_alt || article.title || 'Cover image';
-  const contentHtml = sanitizeArticleHtml(article.content || '');
+  const coverAlt = article.cover_image_alt || article.title || "Cover image";
+  const contentHtml = sanitizeArticleHtml(article.content || "");
 
-  // 👤 Author info
   const author = (article as any).profiles;
-  const authorName = author?.display_name || 'Guest Author';
+  const authorName = author?.display_name || "Guest Author";
   const avatarUrl =
     author?.avatar_url || avatarPlaceholder(author?.display_name);
 
   return (
-    <main className="prose max-w-3xl py-6">
-      <h1>{article.title}</h1>
-
+    <main
+      className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm p-5 mt-6"
+      style={{ fontFamily: "system-ui, sans-serif" }}
+    >
       {/* 👤 Author info */}
-      <div className="not-prose mb-6 flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-3">
         <img
           src={avatarUrl}
           alt={authorName}
           width={40}
           height={40}
-          style={{
-            borderRadius: '50%',
-            objectFit: 'cover',
-            width: 40,
-            height: 40,
-            border: '1px solid #ddd',
-          }}
+          className="rounded-full border border-gray-300 object-cover"
         />
         <div>
-          <div style={{ fontWeight: 600 }}>{authorName}</div>
+          <div className="font-semibold text-sm">{authorName}</div>
           {article.published_at && (
-            <div style={{ fontSize: 12, color: '#777' }}>
+            <div className="text-xs text-gray-500">
               {new Date(article.published_at).toLocaleDateString()}
             </div>
           )}
         </div>
       </div>
 
-      {/* 🎥 Video or 🖼️ Cover image */}
+      {/* 📰 Title */}
+      <h1 className="text-2xl font-semibold leading-snug mb-3">
+        {article.title}
+      </h1>
+
+      {/* 📄 Article Content */}
+      <article
+        className="prose prose-gray max-w-none text-[15px] leading-relaxed mb-4"
+        dangerouslySetInnerHTML={{ __html: contentHtml }}
+      />
+
+      {/* 🖼️ Media */}
       {videoSrc ? (
         <div className="not-prose my-4">
           <video
             controls
             playsInline
             preload="metadata"
-            style={{ width: '100%', maxHeight: '80vh', borderRadius: 8 }}
+            style={{ width: "100%", borderRadius: 8, maxHeight: "80vh" }}
             src={videoSrc}
           />
         </div>
@@ -119,33 +188,37 @@ export default async function ArticlePage({ params }: { params: Params }) {
             loading="eager"
             decoding="async"
             style={{
-              width: '100%',
-              height: 'auto',
-              maxHeight: '80vh',
-              objectFit: 'contain',
+              width: "100%",
+              height: "auto",
+              maxHeight: "80vh",
+              objectFit: "contain",
               borderRadius: 8,
-              display: 'block',
+              display: "block",
             }}
           />
         </div>
       ) : null}
 
-      {/* 💬 Actions: Like + Share */}
-      <div className="not-prose mb-4 flex items-center gap-4">
+      {/* 💬 Actions */}
+      <div className="not-prose flex items-center gap-4 border-t border-gray-200 pt-3 mt-4">
         <LikeButton articleId={article.id} />
         <ShareButton slug={article.slug} title={article.title} />
       </div>
 
       <AdSenseSlot slot="0000000000" />
 
-      {/* 📄 Article content */}
-      <article dangerouslySetInnerHTML={{ __html: contentHtml }} />
+      {/* 👁️ Track a deduped view (client-side) */}
+      <ViewTracker articleId={article.id} />  {/* ✅ Added here */}
 
-      {/* 🗨️ Comments section */}
+      {/* 🗨️ Comments */}
       <FocusCommentOnHash textareaId="comment-input" />
       <section id="comments" className="mt-8 not-prose space-y-4">
         <h2 className="text-xl font-semibold">Comments</h2>
         <CommentsRealtime articleId={article.id} />
+
+        {/* ✨ Highlights deep-linked comment when opened via #comment-<id> */}
+        <HighlightOnHash />
+
         <CommentForm articleId={article.id} />
         <CommentsList articleId={article.id} />
       </section>

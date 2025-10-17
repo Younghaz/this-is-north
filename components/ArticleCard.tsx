@@ -7,9 +7,9 @@ import { publicStorageUrl } from '../lib/public-url';
 import LikeButton from './LikeButton';
 import ShareButton from './ShareButton';
 
-// 🔹 Helper for placeholder avatars (DiceBear)
+// 🧩 Avatar placeholder
 function avatarPlaceholder(name?: string | null) {
-  const seed = encodeURIComponent(name && name.trim() ? name : 'Guest');
+  const seed = encodeURIComponent(name?.trim() || 'Guest');
   return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
 }
 
@@ -31,7 +31,7 @@ type Article = {
 };
 
 export default function ArticleCard({ article }: { article: Article }) {
-  const excerpt = makeExcerptFromHtml(article.content, 320);
+  const excerpt = makeExcerptFromHtml(article.content, 280);
   const imgSrc = article.cover_image_path ? publicStorageUrl('images', article.cover_image_path) : '';
   const vidSrc =
     article.video_url
@@ -40,7 +40,7 @@ export default function ArticleCard({ article }: { article: Article }) {
       ? publicStorageUrl('videos', article.video_path)
       : '';
 
-  const [likes, setLikes] = useState<number>(article.likes_count ?? 0);
+  const [likes, setLikes] = useState(article.likes_count ?? 0);
   const comments = article.comments_count ?? 0;
 
   const author = article.profiles;
@@ -50,61 +50,64 @@ export default function ArticleCard({ article }: { article: Article }) {
   return (
     <li
       style={{
-        border: '1px solid #ccc',
-        padding: 12,
+        border: '1px solid #ddd',
+        borderRadius: 10,
+        background: '#fff',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+        padding: 14,
         display: 'grid',
-        gap: 8,
-        borderRadius: 6,
+        gap: 10,
+        fontFamily: 'system-ui, sans-serif',
       }}
     >
-      {/* 👤 Author info */}
+      {/* 👤 Author */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <img
           src={avatarUrl}
           alt={authorName}
-          width={32}
-          height={32}
+          width={40}
+          height={40}
           loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = avatarPlaceholder(authorName);
-          }}
           style={{
             borderRadius: '50%',
             objectFit: 'cover',
-            width: 32,
-            height: 32,
-            border: '1px solid #ddd',
-            background: '#f9f9f9',
+            border: '1px solid #ccc',
           }}
         />
-        <div style={{ fontSize: 13, color: '#444' }}>
-          <div style={{ fontWeight: 600 }}>{authorName}</div>
-          {article.published_at ? (
-            <div style={{ fontSize: 11, color: '#777' }}>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{authorName}</div>
+          {article.published_at && (
+            <div style={{ fontSize: 12, color: '#777' }}>
               {new Date(article.published_at).toLocaleDateString()}
             </div>
-          ) : null}
+          )}
         </div>
       </div>
 
-      {/* 📸 Media: image or video */}
-      {imgSrc ? (
-        <Link href={`/article/${article.slug}`} style={{ display: 'block' }}>
-          <img
-            src={imgSrc}
-            alt={article.cover_image_alt ?? ''}
-            style={{
-              width: '100%',
-              height: 'auto',
-              maxHeight: '70vh',
-              objectFit: 'contain',
-              background: '#f3f3f3',
-              borderRadius: 4,
-              display: 'block',
-            }}
-          />
+      {/* 📰 Title & Excerpt */}
+      <div style={{ marginTop: 6 }}>
+        <Link
+          href={`/article/${article.slug}`}
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            textDecoration: 'none',
+            color: '#222',
+            lineHeight: 1.3,
+          }}
+        >
+          {article.title}
         </Link>
-      ) : vidSrc ? (
+
+        {excerpt && (
+          <p style={{ marginTop: 4, color: '#333', fontSize: 15, lineHeight: 1.4 }}>
+            {excerpt}
+          </p>
+        )}
+      </div>
+
+      {/* 📸 Media */}
+      {vidSrc ? (
         <Link href={`/article/${article.slug}`} style={{ display: 'block' }}>
           <video
             src={vidSrc}
@@ -116,41 +119,26 @@ export default function ArticleCard({ article }: { article: Article }) {
               height: 'auto',
               maxHeight: '70vh',
               objectFit: 'contain',
+              borderRadius: 8,
               background: '#000',
-              borderRadius: 4,
-              display: 'block',
             }}
           />
         </Link>
-      ) : null}
-
-      {/* 🏷️ Category */}
-      <div style={{ fontSize: 12, color: '#555' }}>
-        {article.categories?.name_en || article.categories?.slug || 'Uncategorized'}
-      </div>
-
-      {/* 📰 Title */}
-      <Link
-        href={`/article/${article.slug}`}
-        style={{ fontSize: 22, fontWeight: 700, textDecoration: 'none' }}
-      >
-        {article.title}
-      </Link>
-
-      {/* 🧩 Excerpt */}
-      {excerpt ? (
-        <p
-          style={{
-            marginTop: 4,
-            color: '#222',
-            display: '-webkit-box',
-            WebkitLineClamp: 4,
-            WebkitBoxOrient: 'vertical' as any,
-            overflow: 'hidden',
-          }}
-        >
-          {excerpt}
-        </p>
+      ) : imgSrc ? (
+        <Link href={`/article/${article.slug}`} style={{ display: 'block' }}>
+          <img
+            src={imgSrc}
+            alt={article.cover_image_alt ?? ''}
+            style={{
+              width: '100%',
+              height: 'auto',
+              maxHeight: '70vh',
+              objectFit: 'contain',
+              borderRadius: 8,
+              background: '#f2f2f2',
+            }}
+          />
+        </Link>
       ) : null}
 
       {/* 💬 Actions */}
@@ -159,12 +147,14 @@ export default function ArticleCard({ article }: { article: Article }) {
           display: 'flex',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: 12,
-          marginTop: 6,
+          gap: 10,
+          borderTop: '1px solid #eee',
+          paddingTop: 8,
+          marginTop: 4,
         }}
       >
         <LikeButton articleId={article.id} onLiked={() => setLikes((n) => n + 1)} />
-        <span style={{ fontSize: 12, color: '#444' }}>
+        <span style={{ fontSize: 13, color: '#444' }}>
           {likes} {likes === 1 ? 'like' : 'likes'}
         </span>
 

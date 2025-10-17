@@ -33,3 +33,8 @@ a { color: var(--brand); }
   border: none;
   border-radius: 6px;
 }
+
+.comment-highlight {
+  background: rgba(255, 235, 59, 0.3);
+  transition: background 0.8s ease;
+}

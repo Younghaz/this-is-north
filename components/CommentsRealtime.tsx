@@ -1,12 +1,12 @@
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { getBrowserSupabase } from '@/lib/supabase-browser';
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { getBrowserSupabase } from '@/lib/supabase-browser'
 
 export default function CommentsRealtime({ articleId }: { articleId: number }) {
-  const router = useRouter();
-  const supabase = getBrowserSupabase();
+  const router = useRouter()
+  const supabase = getBrowserSupabase()
 
   useEffect(() => {
     const channel = supabase
@@ -14,21 +14,19 @@ export default function CommentsRealtime({ articleId }: { articleId: number }) {
       .on(
         'postgres_changes',
         {
-          event: '*', // INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'comments',
           filter: `article_id=eq.${articleId}`,
         },
-        () => {
-          router.refresh();
-        }
+        () => router.refresh()
       )
-      .subscribe();
+      .subscribe()
 
     return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [articleId, supabase, router]);
+      supabase.removeChannel(channel)
+    }
+  }, [articleId, supabase, router])
 
-  return null;
+  return null
 }
