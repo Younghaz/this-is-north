@@ -132,11 +132,52 @@ export default async function ArticlePage({
   const avatarUrl =
     author?.avatar_url || avatarPlaceholder(author?.display_name);
 
+  // JSON-LD Schema for SEO
+  const publishedDate = article.published_at ? new Date(article.published_at).toISOString() : new Date().toISOString();
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") || "http://localhost:3000";
+  const articleUrl = `${site}/article/${slug}`;
+  const imageUrl = heroSrc || `${site}/default-article-image.jpg`;
+  
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": article.title,
+    "description": article.content?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160) || "",
+    "image": imageUrl,
+    "author": {
+      "@type": "Person",
+      "name": authorName,
+      "image": avatarUrl
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "This is North",
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${site}/logo.png`
+      }
+    },
+    "datePublished": publishedDate,
+    "dateModified": publishedDate,
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": articleUrl
+    },
+    "url": articleUrl
+  };
+
   return (
-    <main
-      className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm p-5 mt-6"
-      style={{ fontFamily: "system-ui, sans-serif" }}
-    >
+    <>
+      {/* JSON-LD Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      
+      <main
+        className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm p-5 mt-6"
+        style={{ fontFamily: "system-ui, sans-serif" }}
+      >
       {/* 👤 Author info */}
       <div className="flex items-center gap-3 mb-3">
         <img
@@ -221,5 +262,6 @@ export default async function ArticlePage({
         <CommentsList articleId={article.id} />
       </section>
     </main>
+    </>
   );
 }

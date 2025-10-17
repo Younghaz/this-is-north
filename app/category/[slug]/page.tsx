@@ -4,10 +4,12 @@ import FeedInfinite from '@/components/FeedInfinite';
 
 export const dynamic = 'force-dynamic';
 
-type Params = Promise<{ slug: string }>;
-
-export default async function CategoryPage({ params }: { params: Params }) {
-  const { slug } = await params;
+export default async function CategoryPage({ 
+  params 
+}: { 
+  params: { slug: string } 
+}) {
+  const { slug } = params;
   const supabase = getSupabase();
 
   // 1️⃣ Find category
@@ -27,10 +29,16 @@ export default async function CategoryPage({ params }: { params: Params }) {
     title,
     content,
     excerpt,
+    status,
     published_at,
-    cover_url,
+    cover_image_path,
+    cover_image_alt,
     video_provider,
     video_path,
+    video_url,
+    likes_count,
+    comments_count,
+    category_id,
     categories:category_id (slug, name_en)
   `;
 
@@ -44,8 +52,14 @@ export default async function CategoryPage({ params }: { params: Params }) {
     .range(0, PAGE_SIZE); // inclusive -> PAGE_SIZE+1
 
   const list = articles ?? [];
-  const hasMore = (list.length ?? 0) > PAGE_SIZE;
-  const initialItems = list.slice(0, PAGE_SIZE);
+  // Transform to match FeedInfinite's Article type
+  const transformedList = list.map(article => ({
+    ...article,
+    categories: article.categories?.[0] || null // FeedInfinite expects single category object, not array
+  }));
+  
+  const hasMore = (transformedList.length ?? 0) > PAGE_SIZE;
+  const initialItems = transformedList.slice(0, PAGE_SIZE);
   const initialNextCursor = hasMore ? PAGE_SIZE : null;
 
   return (
