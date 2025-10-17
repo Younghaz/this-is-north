@@ -3,11 +3,12 @@ import { getSupabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-
-export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
-  const sp = await searchParams;
-  const rawQ = Array.isArray(sp?.q) ? sp?.q[0] : sp?.q;
+export default async function SearchPage({ 
+  searchParams 
+}: { 
+  searchParams: Record<string, string | string[] | undefined> 
+}) {
+  const rawQ = Array.isArray(searchParams?.q) ? searchParams?.q[0] : searchParams?.q;
   const q = (rawQ ?? '').trim();
 
   let results:
@@ -18,14 +19,29 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const supabase = getSupabase();
 
   if (q.length >= 2) {
-    const pattern = `%${q}%`;
-    const { data, error } = await supabase
+    // Try full-text search first (requires FTS migration to be run)
+    let { data, error } = await supabase
       .from('articles')
       .select('id, slug, title, excerpt, published_at')
       .eq('status', 'published')
-      .or(`title.ilike.${pattern},excerpt.ilike.${pattern},content.ilike.${pattern}`)
+      .textSearch('fts', q, { type: 'websearch' })
       .order('published_at', { ascending: false })
       .limit(20);
+
+    // Fallback to ILIKE search if FTS fails (column doesn't exist yet)
+    if (error && error.message.includes('column "fts" does not exist')) {
+      const pattern = `%${q}%`;
+      const fallback = await supabase
+        .from('articles')
+        .select('id, slug, title, excerpt, published_at')
+        .eq('status', 'published')
+        .or(`title.ilike.${pattern},excerpt.ilike.${pattern},content.ilike.${pattern}`)
+        .order('published_at', { ascending: false })
+        .limit(20);
+      
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) errorMsg = error.message;
     results = data ?? [];

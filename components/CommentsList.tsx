@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
 import DeleteCommentButton from './DeleteCommentButton'
 import ReplyAction from './ReplyAction'
+import ReportButton from './ReportButton'
 
 function avatarPlaceholder(name?: string | null, email?: string | null) {
   const base = name || email || 'User'
@@ -133,6 +134,7 @@ export default async function CommentsList({ articleId }: { articleId: number })
             <div className="text-xs text-gray-500 mt-1 flex items-center gap-3">
               <span>{new Date(node.created_at).toLocaleString()}</span>
               <ReplyAction articleId={articleId} parentId={node.id} />
+              <ReportButton contentType="comment" contentId={node.id} />
             </div>
 
             {node.children.length > 0 && (

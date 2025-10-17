@@ -28,15 +28,13 @@ function avatarPlaceholder(name?: string | null) {
 
 export const dynamic = "force-dynamic";
 
-type Params = Promise<{ slug: string }>;
-
 // 🧠 SEO Metadata
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: { slug: string };
 }) {
-  const { slug } = await params;
+  const { slug } = params;
   const supabase = getSupabase();
 
   const { data: article } = await supabase
@@ -93,9 +91,9 @@ export async function generateMetadata({
 export default async function ArticlePage({
   params,
 }: {
-  params: Params;
+  params: { slug: string };
 }) {
-  const { slug } = await params;
+  const { slug } = params;
   const supabase = getSupabase();
 
   const { data: article, error } = await supabase

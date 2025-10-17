@@ -1,39 +1,63 @@
-// Minimal, dependency-free sanitizer to unblock dev.
-// Note: This is not as robust as sanitize-html, but it will allow video/iframe quickly.
-const ALLOWED_TAGS = new Set([
-  'p','br','strong','em','u','s','ul','ol','li','blockquote','code','pre','span','div','a','img',
-  'video','source','iframe','h1','h2','h3','h4','h5','h6'
-]);
+import sanitizeHtml from 'sanitize-html'
 
-const ALLOWED_ATTR = new Set([
-  'href','target','rel','src','alt','title','width','height','style','loading','decoding',
-  'srcset','sizes','controls','playsinline','poster','preload','muted','loop','autoplay',
-  'allow','allowfullscreen'
-]);
-
+// Robust HTML sanitizer with domain-restricted iframe policy
 export function sanitizeArticleHtml(input: string): string {
-  if (!input) return '';
-  // Strip script/style tags entirely
-  let html = input.replace(/<\/?(script|style)[^>]*>/gi, '');
-  // Strip on* event handlers
-  html = html.replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '');
-  // Remove tags not in the allowlist
-  html = html.replace(/<\/?([a-z0-9-]+)(\s[^>]*)?>/gi, (m, tag, attrs = '') => {
-    const t = String(tag).toLowerCase();
-    if (!ALLOWED_TAGS.has(t)) return '';
-    if (!attrs) return `<${t}>`;
-    // Keep only allowed attributes
-    const safeAttrs = Array.from(attrs.matchAll(/\s([a-z0-9-:]+)(\s*=\s*("[^"]*"|'[^']*'|[^'"\s>]+))?/gi))
-      .map(([full, name, , val]) => {
-        const n = String(name).toLowerCase();
-        if (!ALLOWED_ATTR.has(n)) return '';
-        return val ? ` ${n}=${val}` : ` ${n}`;
-      })
-      .join('');
-    // Close tags preserved as-is
-    if (m.startsWith('</')) return `</${t}>`;
-    // Self-closing if present
-    return `<${t}${safeAttrs}>`;
-  });
-  return html;
+  if (!input) return ''
+
+  return sanitizeHtml(input, {
+    allowedTags: [
+      // Text formatting
+      'p', 'br', 'strong', 'em', 'u', 's', 'del', 'ins', 'span', 'div',
+      // Lists
+      'ul', 'ol', 'li',
+      // Headings
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      // Code
+      'code', 'pre', 'blockquote',
+      // Links and media
+      'a', 'img', 'video', 'source', 'iframe',
+      // Tables
+      'table', 'thead', 'tbody', 'tr', 'td', 'th'
+    ],
+    allowedAttributes: {
+      '*': ['class', 'style', 'title', 'id'],
+      'a': ['href', 'target', 'rel'],
+      'img': ['src', 'alt', 'width', 'height', 'loading', 'decoding', 'srcset', 'sizes'],
+      'video': ['src', 'width', 'height', 'controls', 'playsinline', 'poster', 'preload', 'muted', 'loop'],
+      'source': ['src', 'type', 'media'],
+      'iframe': ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'loading']
+    },
+    allowedIframeHostnames: [
+      'www.youtube.com',
+      'www.youtube-nocookie.com',
+      'player.vimeo.com',
+      'www.dailymotion.com',
+      'codepen.io'
+    ],
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    allowedSchemesByTag: {
+      img: ['http', 'https', 'data'],
+      video: ['http', 'https'],
+      source: ['http', 'https']
+    },
+    transformTags: {
+      'iframe': (tagName: string, attribs: Record<string, string>) => {
+        // Ensure YouTube iframes use nocookie domain for privacy
+        if (attribs.src?.includes('youtube.com/embed/')) {
+          attribs.src = attribs.src.replace('youtube.com', 'youtube-nocookie.com')
+        }
+        return {
+          tagName,
+          attribs: {
+            ...attribs,
+            loading: 'lazy' // Add lazy loading for performance
+          }
+        }
+      }
+    },
+    // Remove empty paragraphs and normalize whitespace
+    exclusiveFilter: (frame: { tag: string; text?: string }) => {
+      return frame.tag === 'p' && !frame.text?.trim()
+    }
+  })
 }

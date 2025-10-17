@@ -34,12 +34,14 @@ const nextConfig = {
               // Allow images and media from Supabase/public, data, and blob
               "img-src 'self' https: data: blob:",
               "media-src 'self' https://*.supabase.co data: blob:",
-              // ✅ Allow YouTube embeds
-              "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+              // ✅ Allow YouTube and AdSense embeds
+              "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com",
               // Fonts
               "font-src 'self' https: data:",
-              // ✅ Scripts (safe baseline + analytics/ads)
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com",
+              // ✅ Scripts (safe baseline + analytics/ads + AdSense)
+              process.env.NODE_ENV === 'production' 
+                ? "script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net"
+                : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net",
             ].join('; '),
           },
         ],
