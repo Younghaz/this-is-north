@@ -14,39 +14,59 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     let mounted = true;
-    let timeoutId: any;
+    let timeoutId: NodeJS.Timeout;
 
     (async () => {
       try {
-        const { data: userRes } = await supabase.auth.getUser();
+        console.log('AdminGuard: Starting auth check...');
+        
+        const { data: userRes, error: authError } = await supabase.auth.getUser();
+        
+        if (authError) {
+          console.error('AdminGuard: Auth error:', authError);
+          setErr(`Auth error: ${authError.message}`);
+          setLoading(false);
+          return;
+        }
+        
         const u = userRes?.user ?? null;
+        console.log('AdminGuard: User:', u?.email);
         setEmail(u?.email ?? null);
 
         if (!u) {
+          console.log('AdminGuard: No user found');
           setLoading(false);
           return;
         }
 
+        console.log('AdminGuard: Checking admin status...');
         const { data, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
+          .from('admins')
+          .select('id')
           .eq('id', u.id)
           .maybeSingle();
 
         if (error) {
-          setErr(error.message);
+          console.error('AdminGuard: Admin check error:', error);
+          setErr(`Admin check failed: ${error.message}`);
         } else {
-          setIsAdmin(!!data?.is_admin);
+          console.log('AdminGuard: Admin check result:', !!data);
+          setIsAdmin(!!data);
         }
-      } catch (e: any) {
-        setErr(e?.message || String(e));
+      } catch (e: unknown) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        console.error('AdminGuard: Unexpected error:', errorMessage);
+        setErr(errorMessage);
       } finally {
         if (mounted) setLoading(false);
       }
     })();
 
     timeoutId = setTimeout(() => {
-      if (mounted) setLoading(false);
+      if (mounted) {
+        console.log('AdminGuard: Timeout reached, stopping loading');
+        setLoading(false);
+      }
     }, 4000);
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, _session) => {

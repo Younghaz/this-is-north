@@ -17,6 +17,9 @@ begin
   end if;
 end $$;
 
+-- Add yourself as admin (REPLACE 'YOUR_AUTH_USER_UUID' with your actual user ID from Supabase Auth > Users)
+-- insert into public.admins (id) values ('YOUR_AUTH_USER_UUID') on conflict (id) do nothing;
+
 -- Reports table (matches your component field names)
 create table if not exists public.reports (
   id bigserial primary key,
@@ -50,6 +53,21 @@ begin
   -- Admins can update report status
   if not exists (select 1 from pg_policies where tablename='reports' and policyname='reports_update_admins') then
     create policy reports_update_admins on public.reports
+      for update using (exists (select 1 from public.admins a where a.id = auth.uid()))
+      with check (exists (select 1 from public.admins a where a.id = auth.uid()));
+  end if;
+end $$;
+
+-- Allow admins to delete or update articles
+alter table public.articles enable row level security;
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename='articles' and policyname='articles_admin_delete') then
+    create policy articles_admin_delete on public.articles
+      for delete using (exists (select 1 from public.admins a where a.id = auth.uid()));
+  end if;
+  if not exists (select 1 from pg_policies where tablename='articles' and policyname='articles_admin_update') then
+    create policy articles_admin_update on public.articles
       for update using (exists (select 1 from public.admins a where a.id = auth.uid()))
       with check (exists (select 1 from public.admins a where a.id = auth.uid()));
   end if;

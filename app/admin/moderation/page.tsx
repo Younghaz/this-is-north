@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
 type Report = {
@@ -12,6 +13,13 @@ type Report = {
   reason: string | null;
   status: string | null;
   created_at: string;
+};
+
+type UserProfile = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
 };
 
 type CommentRow = {
@@ -36,6 +44,7 @@ export default function ModerationPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [commentsById, setCommentsById] = useState<Map<number, CommentRow>>(new Map());
   const [articlesById, setArticlesById] = useState<Map<number, ArticleRow>>(new Map());
+  const [usersById, setUsersById] = useState<Map<string, UserProfile>>(new Map());
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +67,8 @@ export default function ModerationPage() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
+      console.log('Reports query result:', { repData, repErr, count: repData?.length });
+      
       if (repErr) { setError(repErr.message); return; }
       const list = (repData as Report[]) || [];
       setReports(list);
@@ -85,6 +96,18 @@ export default function ModerationPage() {
         for (const a of (arts as ArticleRow[]) || []) map.set(a.id, a);
         setArticlesById(map);
       }
+
+      // Load reporter profiles
+      const reporterIds = list.filter(r => r.reporter_id).map(r => r.reporter_id as string);
+      if (reporterIds.length) {
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', Array.from(new Set(reporterIds)));
+        const userMap = new Map<string, UserProfile>();
+        for (const u of (users as UserProfile[]) || []) userMap.set(u.id, u);
+        setUsersById(userMap);
+      }
     })();
     return () => { cancelled = true; }
   }, [supabase]);
@@ -95,8 +118,8 @@ export default function ModerationPage() {
       const { error } = await supabase.from('reports').update({ status: newStatus }).eq('id', reportId);
       if (error) throw error;
       setReports(prev => prev.filter(r => r.id !== reportId));
-    } catch (e: any) {
-      setError(e?.message || 'Failed to update report');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update report');
     } finally {
       setBusy(null);
     }
@@ -108,8 +131,8 @@ export default function ModerationPage() {
       const { error: cErr } = await supabase.from('comments').update({ status: 'hidden' }).eq('id', commentId);
       if (cErr) throw cErr;
       await resolve(reportId, 'resolved');
-    } catch (e: any) {
-      setError(e?.message || 'Failed to hide comment');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to hide comment');
       setBusy(null);
     }
   }
@@ -120,8 +143,8 @@ export default function ModerationPage() {
       const { error: cErr } = await supabase.from('comments').update({ status: 'visible' }).eq('id', commentId);
       if (cErr) throw cErr;
       await resolve(reportId, 'resolved');
-    } catch (e: any) {
-      setError(e?.message || 'Failed to approve comment');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to approve comment');
       setBusy(null);
     }
   }
@@ -132,8 +155,8 @@ export default function ModerationPage() {
       const { error: aErr } = await supabase.from('articles').update({ status: 'draft' }).eq('id', articleId);
       if (aErr) throw aErr;
       await resolve(reportId, 'resolved');
-    } catch (e: any) {
-      setError(e?.message || 'Failed to unpublish');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to unpublish');
       setBusy(null);
     }
   }
@@ -157,11 +180,39 @@ export default function ModerationPage() {
             const c = isComment ? commentsById.get(r.content_id) : null;
             const a = !isComment ? articlesById.get(r.content_id) : null;
 
+            const reporter = r.reporter_id ? usersById.get(r.reporter_id) : null;
+
             return (
               <li key={r.id} className="border rounded p-3">
                 <div className="text-sm text-gray-600">
                   Report #{r.id} • {new Date(r.created_at).toLocaleString()}
                 </div>
+                
+                {reporter ? (
+                  <div className="mt-1 text-sm flex items-center gap-2">
+                    <span>Reported by:</span>
+                    {reporter.avatar_url && (
+                      <Image 
+                        src={reporter.avatar_url} 
+                        alt="" 
+                        width={24}
+                        height={24}
+                        className="w-6 h-6 rounded-full"
+                      />
+                    )}
+                    <Link 
+                      href={`/profile/${reporter.id}`}
+                      className="underline text-blue-600 hover:text-blue-800"
+                    >
+                      {reporter.display_name || reporter.username || 'Anonymous'}
+                    </Link>
+                  </div>
+                ) : r.reporter_id ? (
+                  <div className="mt-1 text-sm text-gray-500">Reported by: (User not found)</div>
+                ) : (
+                  <div className="mt-1 text-sm text-gray-500">Reported anonymously</div>
+                )}
+                
                 <div className="mt-1 text-sm">Reason: {r.reason || '(none)'}</div>
 
                 {isComment && c ? (

@@ -1,5 +1,8 @@
 -- Articles view for trending page
-create or replace view public.articles_trending as
+-- Drop existing view first to avoid column conflicts
+drop view if exists public.articles_trending;
+
+create view public.articles_trending as
 select
   a.id,
   a.slug,
