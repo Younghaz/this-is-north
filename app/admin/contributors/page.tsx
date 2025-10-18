@@ -168,37 +168,45 @@ export default function ContributorsPage() {
     }
   }
 
-  async function toggleStatus(contributorId: string, currentStatus: string) {
+  // Update toggleStatus to handle both tables
+  async function toggleStatus(contributorId: string | null, currentStatus: string, email?: string, isPending?: boolean) {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    
     try {
-      const { error } = await supabase
-        .from('contributors')
-        .update({ status: newStatus })
-        .eq('id', contributorId);
-
-      if (error) throw error;
-
-      loadData(); // Refresh list
+      if (isPending && email) {
+        await supabase
+          .from('pending_contributors')
+          .update({ status: newStatus })
+          .eq('email', email);
+      } else if (contributorId) {
+        await supabase
+          .from('contributors')
+          .update({ status: newStatus })
+          .eq('id', contributorId);
+      }
+      loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update status');
+      alert('Failed to update status');
     }
   }
 
-  async function removeContributor(contributorId: string) {
-    if (!confirm('Remove this contributor? They will no longer be able to publish articles.')) return;
-
+  // Update removeContributor to handle both tables
+  async function removeContributor(contributorId: string | null, email?: string, isPending?: boolean) {
+    if (!window.confirm('Remove this contributor? They will no longer be able to publish articles.')) return;
     try {
-      const { error } = await supabase
-        .from('contributors')
-        .delete()
-        .eq('id', contributorId);
-
-      if (error) throw error;
-
-      loadData(); // Refresh list
+      if (isPending && email) {
+        await supabase
+          .from('pending_contributors')
+          .delete()
+          .eq('email', email);
+      } else if (contributorId) {
+        await supabase
+          .from('contributors')
+          .delete()
+          .eq('id', contributorId);
+      }
+      loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to remove contributor');
+      alert('Failed to remove contributor');
     }
   }
 
@@ -231,28 +239,57 @@ export default function ContributorsPage() {
       )}
 
       {/* Add new contributor */}
-      <div className="bg-white border rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Add New Contributor</h2>
-        <div className="flex gap-3">
-          <input
-            type="email"
-            placeholder="Enter user's email address"
-            value={newContributorEmail}
-            onChange={(e) => setNewContributorEmail(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={addContributor}
-            disabled={adding || !newContributorEmail.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {adding ? 'Adding...' : 'Add Contributor'}
-          </button>
-        </div>
-        <p className="text-sm text-gray-600 mt-2">
-          Contributors can write and publish articles but cannot access admin functions.
-        </p>
-      </div>
+      <div style={{
+  maxWidth: '700px',
+  margin: '2rem auto',
+  background: '#f9fafb',
+  borderRadius: '0.75rem',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+  border: '1px solid #e5e7eb',
+  padding: '2rem 2rem 1.5rem 2rem',
+}}>
+  <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.2rem', letterSpacing: '0.01em' }}>
+    Add New Contributor
+  </h2>
+  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+    <input
+      type="email"
+      placeholder="Enter user's email address"
+      value={newContributorEmail}
+      onChange={e => setNewContributorEmail(e.target.value)}
+      style={{
+        flex: 1,
+        padding: '0.7rem 1rem',
+        fontSize: '1rem',
+        border: '1px solid #d1d5db',
+        borderRadius: '0.5rem',
+        marginRight: '0.5rem',
+        background: '#fff',
+      }}
+    />
+    <button
+      onClick={addContributor}
+      disabled={adding || !newContributorEmail.trim()}
+      style={{
+        background: adding ? '#e5e7eb' : '#2563eb',
+        color: adding ? '#888' : '#fff',
+        border: 'none',
+        borderRadius: '0.5rem',
+        padding: '0.7rem 1.5rem',
+        fontWeight: 600,
+        fontSize: '1rem',
+        cursor: adding ? 'not-allowed' : 'pointer',
+        boxShadow: adding ? 'none' : '0 1px 4px rgba(37,99,235,0.08)',
+        transition: 'background 0.2s',
+      }}
+    >
+      {adding ? 'Adding...' : 'Add Contributor'}
+    </button>
+  </div>
+  <div style={{ color: '#374151', fontSize: '1rem', marginBottom: '0.5rem' }}>
+    Contributors can write and publish articles but cannot access admin functions.
+  </div>
+</div>
 
       {/* Contributors list */}
       <div className="bg-white border rounded-lg overflow-hidden">
@@ -260,52 +297,109 @@ export default function ContributorsPage() {
           <h2 className="text-lg font-semibold">Current Contributors ({contributors.length})</h2>
         </div>
 
-        {contributors.length === 0 ? (
-          <div className="px-6 py-8 text-center text-gray-500">
-            No contributors yet. Add your first contributor above.
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {contributors.map((contributor) => (
-              <div key={contributor.id} className="px-6 py-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="font-medium">
-                    {contributor.profiles?.display_name || contributor.profiles?.username || 'Unknown User'}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {contributor.profiles?.email}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Added {new Date(contributor.created_at).toLocaleDateString()} • 
-                    <span className={`ml-1 ${contributor.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
-                      {contributor.status}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => toggleStatus(contributor.id, contributor.status)}
-                    className={`px-3 py-1 text-sm rounded ${
-                      contributor.status === 'active'
-                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                        : 'bg-green-100 text-green-800 hover:bg-green-200'
-                    }`}
-                  >
-                    {contributor.status === 'active' ? 'Suspend' : 'Activate'}
-                  </button>
-                  
-                  <button
-                    onClick={() => removeContributor(contributor.id)}
-                    className="px-3 py-1 text-sm bg-red-100 text-red-800 hover:bg-red-200 rounded"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="overflow-x-auto">
+          <style>{`
+  .contributors-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 1rem;
+  }
+  .contributors-table th, .contributors-table td {
+    border: 1px solid #e5e7eb;
+    padding: 0.75rem 1rem;
+    text-align: left;
+  }
+  .contributors-table th {
+    background: #f3f4f6;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .contributors-table tr:nth-child(even) {
+    background: #fafafa;
+  }
+  .badge {
+    display: inline-block;
+    padding: 0.2em 0.7em;
+    border-radius: 0.5em;
+    font-size: 0.95em;
+    font-weight: 600;
+    margin-right: 0.5em;
+  }
+  .badge-active {
+    background: #e6ffed;
+    color: #059669;
+    border: 1px solid #059669;
+  }
+  .badge-suspended {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+  }
+  .badge-pending {
+    background: #fffbe6;
+    color: #b45309;
+    border: 1px solid #fbbf24;
+  }
+  .badge-confirmed {
+    background: #e0f2fe;
+    color: #2563eb;
+    border: 1px solid #2563eb;
+  }
+  .contributors-table button {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 0.3em;
+    padding: 0.3em 0.9em;
+    margin-right: 0.5em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .contributors-table button:hover {
+    background: #e0e7ff;
+    border-color: #6366f1;
+    color: #3730a3;
+  }
+`}</style>
+          <table className="contributors-table">
+            <thead>
+              <tr>
+                <th>EMAIL</th>
+                <th>STATUS</th>
+                <th>ROLE</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contributors.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: '#666' }}>
+                    No contributors yet. Add your first contributor above.
+                  </td>
+                </tr>
+              ) : (
+                contributors.map((c) => (
+                  <tr key={c.email || c.id}>
+                    <td>{c.email || 'Unknown'}</td>
+                    <td>
+                      <span className={`badge ${c.status === 'active' ? 'badge-active' : 'badge-suspended'}`}>{c.status}</span>
+                    </td>
+                    <td>
+                      <span className={`badge ${c.isPending ? 'badge-pending' : 'badge-confirmed'}`}>{c.isPending ? 'Pending' : 'Confirmed'}</span>
+                    </td>
+                    <td>
+                      <button onClick={() => toggleStatus(c.id ?? null, c.status, c.email, c.isPending)}>
+                        {c.status === 'active' ? 'Suspend' : 'Activate'}
+                      </button>
+                      <button onClick={() => removeContributor(c.id ?? null, c.email, c.isPending)}>Remove</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </main>
   );
