@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     console.log('[comments] inserting…', { articleId, userId });
     const { error } = await supabase
       .from('comments')
-      .insert({ article_id: articleId, user_id: userId, body: text }, { returning: 'minimal' });
+      .insert({ article_id: articleId, user_id: userId, body: text, status: 'visible' }, { returning: 'minimal' });
 
     if (error) {
       console.error('[comments] insert error:', error);

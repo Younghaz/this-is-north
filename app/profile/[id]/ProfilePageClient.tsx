@@ -1,6 +1,9 @@
+
 'use client';
+import UserAvatar from '@/components/UserAvatar';
 
 import Link from 'next/link';
+
 import { useEffect, useMemo, useState } from 'react';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
@@ -9,6 +12,9 @@ type Profile = {
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  location?: string | null;
+  age?: number | null;
+  bio?: string | null;
 };
 
 type CommentRow = {
@@ -61,7 +67,7 @@ export default function ProfilePageClient({ id }: { id: string }) {
         // Load profile
         const { data: prof, error: pErr } = await supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url')
+          .select('id, username, display_name, avatar_url, location, age, bio')
           .eq('id', id)
           .maybeSingle();
         if (pErr) throw pErr;
@@ -155,8 +161,10 @@ export default function ProfilePageClient({ id }: { id: string }) {
     }
   }
 
-  if (loading && !profile) return <main className="p-6">Loading…</main>;
-  if (error && !profile) return <main className="p-6 text-red-600">{error}</main>;
+
+  // Show error if profile fetch fails, so user is not stuck on Loading…
+  if (loading && !profile && !error) return <main className="p-6">Loading…</main>;
+  if (error && !profile) return <main className="p-6 text-red-600 font-semibold">{error}</main>;
   if (!profile) return null;
 
   const name = profile.display_name || profile.username || 'User';
@@ -167,27 +175,38 @@ export default function ProfilePageClient({ id }: { id: string }) {
       {/* --- Profile header card --- */}
       <div className="bg-white border rounded-xl shadow-sm p-6">
         <header className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-          <img
-            src={avatar}
-            alt={name}
-            width={112}
-            height={112}
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border object-cover shadow-sm shrink-0"
-            loading="eager"
-            decoding="async"
-          />
+          <UserAvatar name={name} avatar_url={profile.avatar_url} size={112} />
           <div>
             <h1 className="text-2xl font-semibold">{name}</h1>
             {profile.username && (
               <div className="text-sm text-gray-600">@{profile.username}</div>
+            )}
+            {profile.location && (
+              <div className="text-sm text-gray-600">📍 {profile.location}</div>
+            )}
+            {profile.age && (
+              <div className="text-sm text-gray-600">🎂 {profile.age} years old</div>
             )}
             {typeof totalComments === 'number' && (
               <div className="text-sm text-gray-600 mt-1">
                 {totalComments} {totalComments === 1 ? 'comment' : 'comments'}
               </div>
             )}
+            <div style={{ marginTop: '12px' }}>
+              <a href="/profile/edit">
+                <button style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid #888', background: '#f3f3f3', cursor: 'pointer' }}>
+                  Edit Profile
+                </button>
+              </a>
+            </div>
           </div>
         </header>
+        {profile.bio && (
+          <section className="max-w-xl mb-2 mt-4">
+            <h2 className="text-lg font-semibold mb-1">Bio</h2>
+            <p className="whitespace-pre-wrap text-gray-900">{profile.bio}</p>
+          </section>
+        )}
       </div>
 
       {/* --- Comments list --- */}

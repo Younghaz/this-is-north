@@ -44,10 +44,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ) : null}
 
         {/* ✅ Site header */}
-        <header className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-semibold text-brand">This is North</Link>
+        <header className="max-w-5xl mx-auto px-4 py-4" style={{ position: 'relative' }}>
+          {/* AuthStatus absolutely top right */}
+          <div style={{ position: 'absolute', top: 0, right: 0, margin: '12px 24px 0 0', zIndex: 10 }}>
             <AuthStatus />
+          </div>
+          {/* Logo */}
+          <div className="flex items-center mb-2">
+            <Link href="/" className="text-2xl font-semibold text-brand">This is North</Link>
           </div>
           <SiteNav />
           <hr className="my-4" />

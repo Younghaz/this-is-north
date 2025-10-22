@@ -1,32 +1,26 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdSenseSlot from "@/components/AdSenseSlot";
 import LikeButton from "@/components/LikeButton";
-import CommentsList from "@/components/CommentsList";
-import CommentForm from "@/components/CommentForm";
 import CommentsRealtime from "@/components/CommentsRealtime";
+import CommentForm from "@/components/CommentForm";
 import FocusCommentOnHash from "@/components/FocusCommentOnHash";
 import { getSupabase } from "@/lib/supabase";
 import { publicStorageUrl } from "@/lib/public-url";
 import ShareButton from "@/components/ShareButton";
 import HighlightOnHash from "@/components/HighlightOnHash";
-import ViewTracker from "@/components/ViewTracker"; // ✅ NEW import
+import ViewTracker from "@/components/ViewTracker";
+import CommentsListClient from '@/components/CommentsListClient';
+import Image from "next/image";
 
 // 🧩 Sanitizer fallback
-let sanitizeArticleHtml: (s: string) => string = (s) =>
-  (s || "").replace(/<\/?(script|style)[^>]*>/gi, "");
-try {
-  const { sanitizeArticleHtml: realSanitize } = require("@/lib/sanitize");
-  sanitizeArticleHtml = realSanitize;
-} catch {}
+import { sanitizeArticleHtml as realSanitize } from "@/lib/sanitize";
+const sanitizeArticleHtml: (s: string) => string = realSanitize;
 
 // 🧩 Avatar placeholder
 function avatarPlaceholder(name?: string | null) {
   const seed = encodeURIComponent(name?.trim() || "User");
   return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
 }
-
-export const dynamic = "force-dynamic";
 
 // 🧠 SEO Metadata
 export async function generateMetadata({
@@ -127,10 +121,9 @@ export default async function ArticlePage({
   const coverAlt = article.cover_image_alt || article.title || "Cover image";
   const contentHtml = sanitizeArticleHtml(article.content || "");
 
-  const author = (article as any).profiles;
-  const authorName = author?.display_name || "Guest Author";
-  const avatarUrl =
-    author?.avatar_url || avatarPlaceholder(author?.display_name);
+  const authorProfile = Array.isArray(article.profiles) ? article.profiles[0] : article.profiles;
+  const authorName = authorProfile?.display_name || "Guest Author";
+  const avatarUrl = authorProfile?.avatar_url || avatarPlaceholder(authorProfile?.display_name);
 
   // JSON-LD Schema for SEO
   const publishedDate = article.published_at ? new Date(article.published_at).toISOString() : new Date().toISOString();
@@ -166,6 +159,45 @@ export default async function ArticlePage({
     "url": articleUrl
   };
 
+  // Fetch comments
+  const { data: commentsData } = await supabase
+    .from('comments')
+    .select('id, article_id, body, created_at, user_id, status, parent_comment_id')
+    .eq('article_id', article.id)
+    .eq('status', 'visible')
+    .order('created_at', { ascending: true });
+
+  const allComments = (commentsData as CommentRow[]) ?? [];
+  const tree = buildTree(allComments).filter((node) => !node.parent_comment_id);
+  const userIds = Array.from(new Set(allComments.map((c) => c.user_id)));
+  const profileById = new Map<string, Profile>();
+
+  // Fetch all profiles for comment authors
+  let profilesData: Profile[] = [];
+  if (userIds.length > 0) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, email, avatar_url')
+      .in('id', userIds);
+    profilesData = (data as Profile[]) ?? [];
+    for (const p of profilesData) profileById.set(p.id, p);
+  }
+
+  // Ensure every userId in comments has a profile entry (fallback if missing)
+  for (const userId of userIds) {
+    if (!profileById.has(userId)) {
+      // Find a comment by this user to get email if available
+      const comment = allComments.find(c => c.user_id === userId);
+      profileById.set(userId, {
+        id: userId,
+        username: null,
+        display_name: null,
+        email: null,
+        avatar_url: null,
+      });
+    }
+  }
+
   return (
     <>
       {/* JSON-LD Schema */}
@@ -173,95 +205,118 @@ export default async function ArticlePage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      
-      <main
-        className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm p-5 mt-6"
-        style={{ fontFamily: "system-ui, sans-serif" }}
-      >
-      {/* 👤 Author info */}
-      <div className="flex items-center gap-3 mb-3">
-        <img
-          src={avatarUrl}
-          alt={authorName}
-          width={40}
-          height={40}
-          className="rounded-full border border-gray-300 object-cover"
+      <main className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm p-5 mt-6 font-sans">
+        {/* 👤 Author info */}
+        <div className="flex items-center gap-3 mb-3">
+          <Image
+            src={avatarUrl}
+            alt={authorName}
+            width={40}
+            height={40}
+            className="rounded-full border border-gray-300 object-cover"
+            priority
+            unoptimized
+          />
+          <div>
+            <div className="font-semibold text-sm">{authorName}</div>
+            {article.published_at && (
+              <div className="text-xs text-gray-500">
+                {new Date(article.published_at).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+        </div>
+        {/* 📰 Title */}
+        <h1 className="text-2xl font-semibold leading-snug mb-3">
+          {article.title}
+        </h1>
+        {/* 📄 Article Content */}
+        <article
+          className="prose prose-gray max-w-none text-[15px] leading-relaxed mb-4 prose"
+          dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
-        <div>
-          <div className="font-semibold text-sm">{authorName}</div>
-          {article.published_at && (
-            <div className="text-xs text-gray-500">
-              {new Date(article.published_at).toLocaleDateString()}
-            </div>
-          )}
+        {/* 🖼️ Media */}
+        {videoSrc ? (
+          <div className="article-cover-video-container">
+            <video
+              src={videoSrc}
+              controls
+              playsInline
+              preload="metadata"
+              className="article-cover-video"
+            />
+          </div>
+        ) : heroSrc ? (
+          <div className="article-cover-image-container">
+            <img
+              src={heroSrc}
+              alt={coverAlt}
+              className="article-cover-image"
+            />
+          </div>
+        ) : null}
+        {/* 💬 Actions */}
+        <div className="not-prose flex items-center gap-4 border-t border-gray-200 pt-3 mt-4">
+          <LikeButton articleId={article.id} />
+          <ShareButton slug={article.slug} title={article.title} />
         </div>
-      </div>
-
-      {/* 📰 Title */}
-      <h1 className="text-2xl font-semibold leading-snug mb-3">
-        {article.title}
-      </h1>
-
-      {/* 📄 Article Content */}
-      <article
-        className="prose prose-gray max-w-none text-[15px] leading-relaxed mb-4"
-        dangerouslySetInnerHTML={{ __html: contentHtml }}
-      />
-
-      {/* 🖼️ Media */}
-      {videoSrc ? (
-        <div className="not-prose my-4">
-          <video
-            controls
-            playsInline
-            preload="metadata"
-            style={{ width: "100%", borderRadius: 8, maxHeight: "80vh" }}
-            src={videoSrc}
+        <AdSenseSlot slot="0000000000" />
+        {/* 👁️ Track a deduped view (client-side) */}
+        <ViewTracker articleId={article.id} />
+        {/* 🗨️ Comments */}
+        <FocusCommentOnHash textareaId="comment-input" />
+        <section id="comments" className="mt-8 not-prose space-y-4">
+          <h2 className="text-xl font-semibold">Comments</h2>
+          <CommentsRealtime articleId={article.id} />
+          {/* ✨ Highlights deep-linked comment when opened via #comment-<id> */}
+          <HighlightOnHash />
+          <CommentForm articleId={article.id} />
+          {/* Use the new polished CommentsListClient for SSR comments */}
+          <CommentsListClient
+            tree={tree}
+            profileById={profileById}
+            articleId={article.id}
           />
-        </div>
-      ) : heroSrc ? (
-        <div className="not-prose my-4">
-          <img
-            src={heroSrc}
-            alt={coverAlt}
-            loading="eager"
-            decoding="async"
-            style={{
-              width: "100%",
-              height: "auto",
-              maxHeight: "80vh",
-              objectFit: "contain",
-              borderRadius: 8,
-              display: "block",
-            }}
-          />
-        </div>
-      ) : null}
-
-      {/* 💬 Actions */}
-      <div className="not-prose flex items-center gap-4 border-t border-gray-200 pt-3 mt-4">
-        <LikeButton articleId={article.id} />
-        <ShareButton slug={article.slug} title={article.title} />
-      </div>
-
-      <AdSenseSlot slot="0000000000" />
-
-      {/* 👁️ Track a deduped view (client-side) */}
-      <ViewTracker articleId={article.id} />  {/* ✅ Added here */}
-
-      {/* 🗨️ Comments */}
-      <FocusCommentOnHash textareaId="comment-input" />
-      <section id="comments" className="mt-8 not-prose space-y-4">
-        <h2 className="text-xl font-semibold">Comments</h2>
-        <CommentsRealtime articleId={article.id} />
-
-        {/* ✨ Highlights deep-linked comment when opened via #comment-<id> */}
-        <HighlightOnHash />
-
-        <CommentForm articleId={article.id} />
-        <CommentsList articleId={article.id} />
-      </section>
-    </main>
+        </section>
+      </main>
     </>
   );
+}
+
+// Helper types and functions for comments tree
+
+type CommentRow = {
+  id: number;
+  article_id: number;
+  body: string;
+  created_at: string;
+  user_id: string;
+  status?: string | null;
+  parent_comment_id?: number | null;
+};
+
+type Profile = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+};
+
+type TreeNode = CommentRow & { children: TreeNode[] };
+
+function buildTree(rows: CommentRow[]): TreeNode[] {
+  const byId = new Map<number, TreeNode>();
+  const roots: TreeNode[] = [];
+  for (const r of rows) byId.set(r.id, { ...r, children: [] });
+  for (const r of rows) {
+    const node = byId.get(r.id)!;
+    if (r.parent_comment_id && byId.has(r.parent_comment_id)) {
+      const parent = byId.get(r.parent_comment_id)!;
+      if (r.parent_comment_id !== r.id) parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  return roots;
 }

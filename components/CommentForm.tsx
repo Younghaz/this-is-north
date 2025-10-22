@@ -70,24 +70,24 @@ export default function CommentForm({ articleId }: { articleId: number }) {
   }
 
   return (
-    <div className="space-y-2 mt-4">
+    <div className="comment-form-card">
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={3}
-        className="w-full border rounded-2xl p-3 text-sm focus:outline-none focus:ring focus:ring-blue-200"
+        className="comment-form-textarea"
         placeholder="Write a comment..."
         maxLength={2000}
       />
-      <div className="flex items-center gap-3">
+      <div className="comment-form-actions">
         <button
           onClick={submit}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-full text-sm"
+          className="comment-form-post-btn"
           type="button"
         >
           Post
         </button>
-        {error && <span className="text-red-600 text-sm">{error}</span>}
+        {error && <span className="comment-form-error">{error}</span>}
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getSupabase } from '../lib/supabase';
 import WriteButton from './WriteButton';
+import ProfileTab from './ProfileTab';
 
 // Utility: convert "food-and-stocks" → "Food And Stocks"
 function toTitle(slug: string) {
@@ -49,9 +50,10 @@ export default async function SiteNav() {
         )}
       </div>
 
-      {/* Right: write button and search */}
+      {/* Right: write button, profile, and search */}
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <WriteButton />
+        <ProfileTab />
         <Link href="/search" style={{ fontWeight: 500 }}>
           Search
         </Link>
