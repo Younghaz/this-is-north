@@ -3,16 +3,16 @@
 
 // --- Bookmarks tab state ---
 import UserAvatar from '@/components/UserAvatar';
-import type { Profile } from '@/lib/types';
-import type { CommentRow, ArticleRow } from '@/lib/types';
-import { avatarPlaceholder } from '@/lib/avatar-placeholder';
+import type { Profile } from '../../../lib/types';
+import type { CommentRow, ArticleRow } from '../../../lib/types';
+// import removed: avatarPlaceholder
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useSession } from '@/lib/useSession';
+// import removed: useSession
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
 export default function ProfilePageClient({ id }: { id: string }) {
-  const { session } = useSession();
+  // Removed unused session
   const supabase = getBrowserSupabase();
   const [tab, setTab] = useState<'comments' | 'bookmarks'>('comments');
   const [error, setError] = useState<string | null>(null);
@@ -21,9 +21,10 @@ export default function ProfilePageClient({ id }: { id: string }) {
   const [articleById, setArticleById] = useState<Map<number, ArticleRow>>(new Map());
   const [totalComments, setTotalComments] = useState<number | null>(null);
   // Bookmarks state
-  const [bookmarkedArticles, setBookmarkedArticles] = useState<any[]>([]);
-  const [bookmarksLoading, setBookmarksLoading] = useState(false);
-  const [bookmarksError, setBookmarksError] = useState<string | null>(null);
+  // Remove unused state setters and specify a better type for bookmarkedArticles
+  const [bookmarkedArticles] = useState<ArticleRow[]>([]);
+  const [bookmarksLoading] = useState(false);
+  const [bookmarksError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const PAGE = 20;
   const [cursor, setCursor] = useState(0);
@@ -31,7 +32,7 @@ export default function ProfilePageClient({ id }: { id: string }) {
   const canLoadMore = useMemo(() => hasMore && !loading && !error, [hasMore, loading, error]);
 
   // Only show bookmarks if the session user is the profile owner
-  const isProfileOwner = session?.user?.id === id;
+  // Removed unused isProfileOwner
   // (Removed duplicate state declarations)
 
   // Bookmarks state
@@ -88,8 +89,8 @@ export default function ProfilePageClient({ id }: { id: string }) {
           for (const a of (arts as ArticleRow[]) ?? []) map.set(a.id, a);
           setArticleById(map);
         }
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Failed to load profile.');
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load profile.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -132,8 +133,8 @@ export default function ProfilePageClient({ id }: { id: string }) {
       }
 
       setHasMore(next.length === PAGE);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load more comments.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load more comments.');
     } finally {
       setLoading(false);
     }
@@ -146,79 +147,58 @@ export default function ProfilePageClient({ id }: { id: string }) {
   if (!profile) return null;
 
   const name = profile.display_name || profile.username || 'User';
-  const avatar = profile.avatar_url || avatarPlaceholder(name);
+  // Removed unused avatar
 
   return (
-
-    <main style={{ maxWidth: 600, margin: '40px auto', padding: 0 }}>
+    <main className="max-w-2xl mx-auto p-0">
       {/* --- Profile header card --- */}
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 18, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 32, marginBottom: 32 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-8 mb-8">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center">
             <UserAvatar name={name} avatar_url={profile.avatar_url} size={120} />
           </div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, margin: '16px 0 4px 0', textAlign: 'center' }}>{name}</h1>
+          <h1 className="text-3xl font-bold mt-4 mb-1 text-center">{name}</h1>
           {profile.username && (
-            <div style={{ fontSize: 16, color: '#666', marginBottom: 4, textAlign: 'center' }}>@{profile.username}</div>
+            <div className="text-base text-gray-600 mb-1 text-center">@{profile.username}</div>
           )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, color: '#555', fontSize: 15, justifyContent: 'center', marginBottom: 8 }}>
+          <div className="flex flex-wrap gap-4 text-gray-700 text-base justify-center mb-2">
             {profile.location && <span>📍 {profile.location}</span>}
             {profile.age && <span>🎂 {profile.age} years old</span>}
             {typeof totalComments === 'number' && <span>{totalComments} {totalComments === 1 ? 'comment' : 'comments'}</span>}
           </div>
-          <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center' }}>
-            <a href="/profile/edit">
-              <button style={{ padding: '8px 24px', borderRadius: 8, border: '1px solid #bbb', background: '#f7f7f7', fontSize: 16, fontWeight: 500, cursor: 'pointer' }}>Edit Profile</button>
-            </a>
-            <a href="/profile/settings" title="Settings" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', border: '1px solid #bbb', background: '#f7f7f7', marginLeft: 4, cursor: 'pointer' }}>
-              <svg width="22" height="22" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="3.5" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1.5 1.1V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.1-1.5H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1.5-1.1V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.22.65.22 1s-.08.69-.22 1a1.65 1.65 0 0 0 1.1 1.5H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.5z" />
-              </svg>
-            </a>
+          <div className="mt-2 flex gap-3 justify-center items-center">
+            <Link href="/profile/edit" passHref legacyBehavior>
+              <button className="px-6 py-2 rounded-lg border border-gray-300 bg-gray-100 text-base font-medium cursor-pointer">Edit Profile</button>
+            </Link>
+            <Link href="/profile/settings" passHref legacyBehavior>
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-300 bg-gray-100 ml-1 cursor-pointer" title="Settings">
+                <svg width="22" height="22" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="3.5" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1.5 1.1V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.1-1.5H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1.5-1.1V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.22.65.22 1s-.08.69-.22 1a1.65 1.65 0 0 0 1.1 1.5H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.5z" />
+                </svg>
+              </span>
+            </Link>
           </div>
         </div>
       </div>
 
       {profile.bio && (
-        <section style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, boxShadow: '0 1px 6px rgba(0,0,0,0.04)', padding: 20, maxWidth: 480, margin: '0 auto 32px auto' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 6 }}>Bio</h2>
-          <p style={{ whiteSpace: 'pre-wrap', color: '#222', fontSize: 16 }}>{profile.bio}</p>
+        <section className="bg-white border border-gray-200 rounded-xl shadow p-5 max-w-lg mx-auto mb-8">
+          <h2 className="text-xl font-semibold mb-2">Bio</h2>
+          <p className="whitespace-pre-wrap text-gray-800 text-base">{profile.bio}</p>
         </section>
       )}
 
       {/* --- Tab bar --- */}
-      <div style={{ display: 'flex', gap: 32, borderBottom: '2px solid #e5e7eb', margin: '0 0 32px 0', justifyContent: 'center' }}>
+      <div className="flex gap-8 border-b-2 border-gray-200 mb-8 justify-center">
         <button
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 20,
-            fontWeight: 600,
-            padding: '8px 0',
-            color: tab === 'comments' ? '#2563eb' : '#888',
-            borderBottom: tab === 'comments' ? '4px solid #2563eb' : '4px solid transparent',
-            transition: 'color 0.2s, border-bottom 0.2s',
-            outline: 'none',
-          }}
+          className={`bg-none border-none cursor-pointer text-xl font-semibold py-2 ${tab === 'comments' ? 'text-blue-600 border-b-4 border-blue-600' : 'text-gray-500 border-b-4 border-transparent'} transition-colors`}
           onClick={() => setTab('comments')}
         >
           Comments
         </button>
         <button
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 20,
-            fontWeight: 600,
-            padding: '8px 0',
-            color: tab === 'bookmarks' ? '#2563eb' : '#888',
-            borderBottom: tab === 'bookmarks' ? '4px solid #2563eb' : '4px solid transparent',
-            transition: 'color 0.2s, border-bottom 0.2s',
-            outline: 'none',
-          }}
+          className={`bg-none border-none cursor-pointer text-xl font-semibold py-2 ${tab === 'bookmarks' ? 'text-blue-600 border-b-4 border-blue-600' : 'text-gray-500 border-b-4 border-transparent'} transition-colors`}
           onClick={() => setTab('bookmarks')}
         >
           Bookmarks
@@ -303,7 +283,6 @@ export default function ProfilePageClient({ id }: { id: string }) {
           )}
         </section>
       )}
-
     </main>
   );
 }
