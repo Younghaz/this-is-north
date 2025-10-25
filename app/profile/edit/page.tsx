@@ -1,5 +1,6 @@
 "use client";
-import { useState } from 'react';
+import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
@@ -21,7 +22,7 @@ export default function ProfileEditPage() {
   const [userId, setUserId] = useState<string | null>(null);
 
   // Fetch userId and profile on mount
-  useState(() => {
+  useEffect(() => {
     (async () => {
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userData?.user?.id) {
@@ -44,7 +45,7 @@ export default function ProfileEditPage() {
       });
       if (error) setError(error.message);
     })();
-  }, []);
+  }, [supabase]);
 
   // Avatar upload handler
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -57,7 +58,7 @@ export default function ProfileEditPage() {
       setError('User ID not loaded.');
       return;
     }
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('avatars')
       .upload(`${userId}/${file.name}`, file, { upsert: true });
     if (error) {
@@ -90,7 +91,7 @@ export default function ProfileEditPage() {
       location: profile.location,
       age: profile.age ? Number(profile.age) : null,
       bio: profile.bio,
-      email: profile.email,
+  // Remove email from upsertProfile, not present in state
     };
     // Debug log to trace RLS error
     console.log('userId:', userId);
@@ -104,28 +105,30 @@ export default function ProfileEditPage() {
   }
 
   return (
-    <main style={{ maxWidth: 480, margin: '40px auto', padding: 20 }}>
-      <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: 24, textAlign: 'center' }}>Edit Profile</h1>
-      {error && <div style={{ color: 'red', marginBottom: 16, textAlign: 'center' }}>{error}</div>}
+  <main className="max-w-xl mx-auto p-5">
+  <h1 className="text-2xl font-bold mb-6 text-center">Edit Profile</h1>
+  {error && <div className="text-red-600 mb-4 text-center">{error}</div>}
       {!userId ? (
-        <div style={{ textAlign: 'center', color: '#555', marginTop: 40, fontSize: 18 }}>
+        <div className="text-center text-gray-600 mt-10 text-lg">
           Please sign in to edit your profile.
         </div>
       ) : (
-        <form onSubmit={handleSave} style={{ background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px #0001', padding: 32, border: '1px solid #eee', margin: '0 auto', maxWidth: 400 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
-            <label style={{ fontWeight: 500, marginBottom: 6 }}>Profile Photo</label>
-            <img
+        <form onSubmit={handleSave} className="bg-white rounded-xl shadow p-8 border border-gray-200 mx-auto max-w-md">
+          <div className="flex flex-col items-center mb-5">
+            <label className="font-medium mb-2">Profile Photo</label>
+            <Image
               src={profile.avatar_url || '/avatar-placeholder.png'}
               alt="Avatar"
               width={96}
               height={96}
-              style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #b3c6ff', marginBottom: 8 }}
+              className="rounded-full object-cover border-2 border-blue-300 mb-2"
+              priority={false}
+              unoptimized
             />
-            <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ fontSize: 14 }} disabled={!userId} />
+            <input type="file" accept="image/*" onChange={handleAvatarUpload} className="text-sm" disabled={!userId} title="Upload profile photo" placeholder="Choose a profile photo" aria-label="Profile photo upload" />
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontWeight: 500, marginBottom: 4, display: 'block' }}>Username</label>
+          <div className="mb-4">
+            <label className="font-medium mb-1 block">Username</label>
             <input
               type="text"
               value={profile.username}
@@ -133,12 +136,12 @@ export default function ProfileEditPage() {
               maxLength={50}
               required
               placeholder="Your username"
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+              className="w-full p-2 rounded border border-gray-300"
               disabled={!userId}
             />
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontWeight: 500, marginBottom: 4, display: 'block' }}>Display Name</label>
+          <div className="mb-4">
+            <label className="font-medium mb-1 block">Display Name</label>
             <input
               type="text"
               value={profile.display_name}
@@ -146,24 +149,24 @@ export default function ProfileEditPage() {
               maxLength={50}
               required
               placeholder="Your display name"
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+              className="w-full p-2 rounded border border-gray-300"
               disabled={!userId}
             />
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontWeight: 500, marginBottom: 4, display: 'block' }}>Location</label>
+          <div className="mb-4">
+            <label className="font-medium mb-1 block">Location</label>
             <input
               type="text"
               value={profile.location}
               onChange={e => setProfile({ ...profile, location: e.target.value })}
               maxLength={100}
               placeholder="Where are you from?"
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+              className="w-full p-2 rounded border border-gray-300"
               disabled={!userId}
             />
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontWeight: 500, marginBottom: 4, display: 'block' }}>Age</label>
+          <div className="mb-4">
+            <label className="font-medium mb-1 block">Age</label>
             <input
               type="number"
               value={profile.age || ''}
@@ -171,25 +174,25 @@ export default function ProfileEditPage() {
               min={0}
               max={120}
               placeholder="Your age"
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+              className="w-full p-2 rounded border border-gray-300"
               disabled={!userId}
             />
           </div>
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontWeight: 500, marginBottom: 4, display: 'block' }}>Bio</label>
+          <div className="mb-5">
+            <label className="font-medium mb-1 block">Bio</label>
             <textarea
               value={profile.bio}
               onChange={e => setProfile({ ...profile, bio: e.target.value })}
               maxLength={500}
               rows={4}
               placeholder="Tell us about yourself..."
-              style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc', resize: 'vertical' }}
+              className="w-full p-2 rounded border border-gray-300 resize-vertical"
               disabled={!userId}
             />
           </div>
           <button
             type="submit"
-            style={{ background: '#2563eb', color: '#fff', padding: '10px 0', borderRadius: 6, fontWeight: 600, width: '100%', fontSize: 16, border: 'none', cursor: 'pointer', opacity: loading || (avatarFile && profile.avatar_url === '') ? 0.6 : 1 }}
+            className={`bg-blue-600 text-white py-2 rounded font-semibold w-full text-base border-none cursor-pointer ${loading || (avatarFile && profile.avatar_url === '') ? 'opacity-60' : ''}`}
             disabled={loading || (avatarFile && profile.avatar_url === '') || !userId}
           >
             {loading ? 'Saving...' : 'Save Changes'}
