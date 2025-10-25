@@ -80,9 +80,15 @@ export async function GET(req: NextRequest) {
     const nextCursor = hasMore ? offset + limit : null;
 
     return NextResponse.json({ ok: true, items, nextCursor });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    let errorMsg = 'Unknown error';
+    if (typeof err === 'object' && err !== null && 'message' in err) {
+      errorMsg = (err as { message?: string }).message ?? 'Unknown error';
+    } else {
+      errorMsg = String(err);
+    }
     return NextResponse.json(
-      { ok: false, error: err?.message ?? String(err) },
+      { ok: false, error: errorMsg },
       { status: 500 }
     );
   }

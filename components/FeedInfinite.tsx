@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ArticleCard from '@/components/ArticleCard';
 
-type Article = {
+export type Article = {
   id: number;
   title: string;
   slug: string;
@@ -84,8 +84,14 @@ export default function FeedInfinite({
       }
       setItems((prev) => [...prev, ...deduped]);
       setNextCursor(json.nextCursor ?? null);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load more');
+    } catch (e: unknown) {
+      let errorMsg = 'Failed to load more';
+      if (typeof e === 'object' && e !== null && 'message' in e) {
+        errorMsg = (e as { message?: string }).message ?? errorMsg;
+      } else {
+        errorMsg = String(e);
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

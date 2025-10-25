@@ -14,7 +14,7 @@ export default function CommentForm({ articleId }: { articleId: number }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let mounted = true
+    const mounted = true
     ;(async () => {
       const { data } = await supabase.auth.getUser()
       if (!mounted) return
@@ -54,17 +54,11 @@ export default function CommentForm({ articleId }: { articleId: number }) {
 
     setBody('')
 
-    supabase
+    const { error } = await supabase
       .from('comments')
-      .insert(
-        { article_id: articleId, user_id: userId, body: text, status: 'visible' },
-        { returning: 'minimal' }
-      )
-      .then(({ error }) => {
-        if (error) setError(error.message)
-        router.refresh()
-      })
-      .catch((e) => setError(e?.message ?? 'Failed to post comment.'))
+      .insert({ article_id: articleId, user_id: userId, body: text, status: 'visible' })
+    if (error) setError(error.message)
+    router.refresh()
 
     setTimeout(() => router.refresh(), 300)
   }

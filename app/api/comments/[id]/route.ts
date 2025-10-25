@@ -65,8 +65,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     console.log('[comments:delete] success in', Date.now() - startedAt, 'ms');
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    const msg = e?.message || String(e);
+  } catch (e: unknown) {
+    let msg = 'Unknown error';
+    if (typeof e === 'object' && e !== null && 'message' in e) {
+      msg = (e as { message?: string }).message ?? 'Unknown error';
+    } else {
+      msg = String(e);
+    }
     console.error('[comments:delete] server error:', msg);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

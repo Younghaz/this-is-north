@@ -1,5 +1,6 @@
 import FeedInfinite from '@/components/FeedInfinite';
 import { getSupabase } from '@/lib/supabase';
+import type { Article } from '@/components/FeedInfinite';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,26 @@ export default async function TrendingPage() {
     .order('trending_score', { ascending: false })
     .limit(PAGE_SIZE + 1);
 
-  let list = viaView ?? [];
+  let list: Article[] = (viaView ?? []).map((a) => ({
+    id: a.id,
+    slug: a.slug,
+    title: a.title,
+    content: null,
+    status: 'published',
+    published_at: a.published_at ?? null,
+    cover_image_path: a.cover_image_path ?? null,
+    cover_image_alt: a.cover_image_alt ?? null,
+    video_provider: null,
+    video_path: null,
+    video_url: null,
+    likes_count: a.likes_count ?? null,
+    comments_count: a.comments_count ?? null,
+    category_id: null,
+    categories: null,
+    trending_score: a.trending_score ?? 0,
+    views_count: a.views_count ?? null,
+    profiles: null,
+  }));
   let fallbackNote: string | null = null;
 
   // Fallback (if view missing or schema not loaded)
@@ -52,9 +72,25 @@ export default async function TrendingPage() {
 
     if (!articlesErr && viaArticles) {
       list = viaArticles.map((a) => ({
-        ...a,
+        id: a.id,
+        slug: a.slug,
+        title: a.title,
+        content: null,
+        status: 'published',
+        published_at: a.published_at ?? null,
+        cover_image_path: a.cover_image_path ?? null,
+        cover_image_alt: a.cover_image_alt ?? null,
+        video_provider: null,
+        video_path: null,
+        video_url: null,
+        likes_count: a.likes_count ?? null,
+        comments_count: a.comments_count ?? null,
+        category_id: null,
+        categories: null,
         trending_score: a.likes_count ?? 0,
-      })) as any[];
+        views_count: a.views_count ?? null,
+        profiles: null,
+      }));
       fallbackNote = '⚠️ Using fallback (ordered by likes).';
     }
   }
@@ -78,7 +114,7 @@ export default async function TrendingPage() {
         initialItems={initialItems}
         initialNextCursor={initialNextCursor}
         pageSize={PAGE_SIZE}
-        filters={{ sort: 'trending' } as any}
+        filters={{ sort: 'trending' } as Record<string, unknown>}
       />
     </main>
   );

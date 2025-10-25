@@ -7,7 +7,6 @@ import { createClient } from '@supabase/supabase-js';
 
 // Debug: Confirm the service role key is loaded (do NOT log the key value itself)
 if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  // eslint-disable-next-line no-console
   console.log('[supabaseServer] Service role key loaded for server-side Supabase client.')
 }
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;

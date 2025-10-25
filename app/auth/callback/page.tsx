@@ -64,8 +64,14 @@ export default function AuthCallbackPage() {
         // No session and no code -> go to login
         router.replace(`/login?next=${encodeURIComponent(next)}`);
         router.refresh();
-      } catch (e: any) {
-        setError(e?.message ?? 'Failed to complete sign-in.');
+      } catch (e: unknown) {
+        let errorMsg = 'Failed to complete sign-in.';
+        if (typeof e === 'object' && e !== null && 'message' in e) {
+          errorMsg = (e as { message?: string }).message ?? errorMsg;
+        } else {
+          errorMsg = String(e);
+        }
+        setError(errorMsg);
         setTimeout(() => {
           router.replace(`/login?next=${encodeURIComponent(next)}`);
           router.refresh();

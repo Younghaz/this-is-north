@@ -28,7 +28,13 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'Server error' }, { status: 500 });
+  } catch (e: unknown) {
+    let errorMsg = 'Server error';
+    if (typeof e === 'object' && e !== null && 'message' in e) {
+      errorMsg = (e as { message?: string }).message ?? 'Server error';
+    } else {
+      errorMsg = String(e);
+    }
+    return NextResponse.json({ ok: false, error: errorMsg }, { status: 500 });
   }
 }

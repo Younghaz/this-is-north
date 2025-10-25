@@ -40,8 +40,14 @@ export default function LoginPage() {
       });
       if (error) throw error;
       setInfo('Check your email for the sign-in link.');
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to send magic link.');
+    } catch (e: unknown) {
+      let errorMsg = 'Failed to send magic link.';
+      if (typeof e === 'object' && e !== null && 'message' in e) {
+        errorMsg = (e as { message?: string }).message ?? errorMsg;
+      } else {
+        errorMsg = String(e);
+      }
+      setError(errorMsg);
     } finally {
       setBusy(false);
     }
@@ -57,8 +63,14 @@ export default function LoginPage() {
       if (error) throw error;
       router.push(next);
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to sign in');
+    } catch (e: unknown) {
+      let errorMsg = 'Failed to sign in';
+      if (typeof e === 'object' && e !== null && 'message' in e) {
+        errorMsg = (e as { message?: string }).message ?? errorMsg;
+      } else {
+        errorMsg = String(e);
+      }
+      setError(errorMsg);
     } finally {
       setBusy(false);
     }
@@ -126,7 +138,7 @@ export default function LoginPage() {
         )}
       </div>
       <div className="login-switch-signup">
-        Don't have an account? <a href="/signup">Sign up</a>
+  Don&apos;t have an account? <a href="/signup">Sign up</a>
       </div>
     </main>
   );
