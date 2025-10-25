@@ -28,7 +28,7 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               // Allow Supabase APIs and websockets
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.google-analytics.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.google-analytics.com https://cdn.onesignal.com",
               // Allow inline styles (for rich text blocks)
               "style-src 'self' 'unsafe-inline'",
               // Allow images and media from Supabase/public, data, and blob
@@ -40,8 +40,8 @@ const nextConfig = {
               "font-src 'self' https: data:",
               // ✅ Scripts (safe baseline + analytics/ads + AdSense)
               process.env.NODE_ENV === 'production' 
-                ? "script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net"
-                : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net",
+                ? "script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://cdn.onesignal.com"
+                : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://cdn.onesignal.com",
             ].join('; '),
           },
         ],

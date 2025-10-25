@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import OneSignalPromptButton from '@/components/OneSignalPromptButton';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
+import { useTheme } from '@/components/ThemeContext';
 
 type Profile = {
   id: string;
@@ -11,6 +13,7 @@ type Profile = {
 
 export default function ProfileSettingsPage() {
   const supabase = getBrowserSupabase();
+  const { theme, toggleTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -151,8 +154,62 @@ export default function ProfileSettingsPage() {
   const previewSrc = avatarPreview || avatarUrl;
 
   return (
-    <main className="max-w-md py-6">
-      <h1 className="text-xl font-semibold mb-4">Profile Settings</h1>
+    <div
+      style={{
+        maxWidth: 480,
+        margin: '40px auto',
+        padding: 24,
+        background: '#fff',
+        borderRadius: 12,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+      }}
+    >
+      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 24 }}>Settings</h1>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}
+      >
+        <span style={{ fontSize: 18 }}>Dark mode</span>
+        <button
+          onClick={toggleTheme}
+          style={{
+            width: 56,
+            height: 32,
+            borderRadius: 16,
+            border: '1px solid #bbb',
+            background: theme === 'dark' ? '#222' : '#eee',
+            position: 'relative',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+          }}
+          aria-pressed={theme === 'dark'}
+        >
+          <span
+            style={{
+              display: 'block',
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              background: theme === 'dark' ? '#ffd600' : '#222',
+              position: 'absolute',
+              top: 3,
+              left: theme === 'dark' ? 28 : 4,
+              transition: 'left 0.2s, background 0.2s',
+            }}
+          />
+        </button>
+      </div>
+      <div style={{ color: '#888', fontSize: 15, marginTop: 24 }}>
+        Switch between light and dark mode. Your preference is saved.
+      </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <OneSignalPromptButton />
+        </div>
 
       {error ? (
         <div className="mb-4 text-sm text-red-600 border border-red-300 bg-red-50 p-2 rounded">
@@ -238,6 +295,6 @@ export default function ProfileSettingsPage() {
           </button>
         </div>
       </form>
-    </main>
+    </div>
   );
 }

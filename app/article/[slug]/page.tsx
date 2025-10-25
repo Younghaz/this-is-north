@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import AdSenseSlot from "@/components/AdSenseSlot";
 import LikeButton from "@/components/LikeButton";
+import BookmarkButton from "@/components/BookmarkButton";
 import CommentsRealtime from "@/components/CommentsRealtime";
 import CommentForm from "@/components/CommentForm";
 import FocusCommentOnHash from "@/components/FocusCommentOnHash";
@@ -258,6 +259,7 @@ export default async function ArticlePage({
         {/* 💬 Actions */}
         <div className="not-prose flex items-center gap-4 border-t border-gray-200 pt-3 mt-4">
           <LikeButton articleId={article.id} />
+          <BookmarkButton articleId={article.id} />
           <ShareButton slug={article.slug} title={article.title} />
         </div>
         <AdSenseSlot slot="0000000000" />

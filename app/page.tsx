@@ -1,5 +1,7 @@
+
 import { getSupabase } from '../lib/supabase';
 import FeedInfinite from '@/components/FeedInfinite';
+import OneSignalLoader from '../components/OneSignalLoader';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +68,7 @@ export default async function HomePage() {
 
   return (
     <main className="py-6 space-y-4">
+      <OneSignalLoader />
       <h1 className="text-2xl font-semibold">This is North</h1>
       <FeedInfinite
         initialItems={initialItems}

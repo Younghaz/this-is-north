@@ -6,6 +6,7 @@ import { makeExcerptFromHtml } from '../lib/excerpt';
 import { publicStorageUrl } from '../lib/public-url';
 import LikeButton from './LikeButton';
 import ShareButton from './ShareButton';
+import BookmarkButton from './BookmarkButton';
 
 // 🧩 Avatar placeholder
 function avatarPlaceholder(name?: string | null) {
@@ -49,11 +50,9 @@ export default function ArticleCard({ article }: { article: Article }) {
 
   return (
     <li
+      className="article-card"
       style={{
-        border: '1px solid #ddd',
         borderRadius: 10,
-        background: '#fff',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
         padding: 14,
         display: 'grid',
         gap: 10,
@@ -88,11 +87,11 @@ export default function ArticleCard({ article }: { article: Article }) {
       <div style={{ marginTop: 6 }}>
         <Link
           href={`/article/${article.slug}`}
+          className="article-card-title"
           style={{
             fontSize: 18,
             fontWeight: 600,
             textDecoration: 'none',
-            color: '#222',
             lineHeight: 1.3,
           }}
         >
@@ -100,7 +99,7 @@ export default function ArticleCard({ article }: { article: Article }) {
         </Link>
 
         {excerpt && (
-          <p style={{ marginTop: 4, color: '#333', fontSize: 15, lineHeight: 1.4 }}>
+          <p className="article-card-excerpt" style={{ marginTop: 4, fontSize: 15, lineHeight: 1.4 }}>
             {excerpt}
           </p>
         )}
@@ -108,7 +107,7 @@ export default function ArticleCard({ article }: { article: Article }) {
 
       {/* 📸 Media */}
       {vidSrc ? (
-        <Link href={`/article/${article.slug}`} style={{ display: 'block' }}>
+  <Link href={`/article/${article.slug}`} className="article-card-media-link" style={{ display: 'block' }}>
           <video
             src={vidSrc}
             controls
@@ -129,13 +128,13 @@ export default function ArticleCard({ article }: { article: Article }) {
           <img
             src={imgSrc}
             alt={article.cover_image_alt ?? ''}
+            className="article-card-media-img"
             style={{
               width: '100%',
               height: 'auto',
               maxHeight: '70vh',
               objectFit: 'contain',
               borderRadius: 8,
-              background: '#f2f2f2',
             }}
           />
         </Link>
@@ -143,18 +142,18 @@ export default function ArticleCard({ article }: { article: Article }) {
 
       {/* 💬 Actions */}
       <div
+        className="article-card-actions"
         style={{
           display: 'flex',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 10,
-          borderTop: '1px solid #eee',
           paddingTop: 8,
           marginTop: 4,
         }}
       >
         <LikeButton articleId={article.id} onLiked={() => setLikes((n) => n + 1)} />
-        <span style={{ fontSize: 13, color: '#444' }}>
+  <span className="article-card-likes" style={{ fontSize: 13 }}>
           {likes} {likes === 1 ? 'like' : 'likes'}
         </span>
 
@@ -162,9 +161,11 @@ export default function ArticleCard({ article }: { article: Article }) {
           Comment ({comments})
         </Link>
 
+        <BookmarkButton articleId={article.id} />
+
         <ShareButton slug={article.slug} title={article.title} excerpt={excerpt} />
 
-        <Link href={`/article/${article.slug}`} style={{ marginLeft: 'auto' }}>
+  <Link href={`/article/${article.slug}`} style={{ marginLeft: 'auto' }}>
           Read more
         </Link>
       </div>
