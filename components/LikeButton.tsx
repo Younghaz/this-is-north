@@ -67,10 +67,10 @@ export default function LikeButton({ articleId, onLiked }: { articleId: number; 
       });
 
       const ok = res.ok;
-      let json: any = null;
+  let json: unknown = null;
       try { json = await res.json(); } catch {}
 
-      if (ok || json?.ok) {
+      if (ok || (typeof json === 'object' && json !== null && 'ok' in json && (json as { ok?: boolean }).ok)) {
         setState('liked');
         if (typeof window !== 'undefined') localStorage.setItem(`liked:${articleId}`, '1');
         onLiked?.();
@@ -85,14 +85,28 @@ export default function LikeButton({ articleId, onLiked }: { articleId: number; 
   const disabled = state !== 'idle';
 
   return (
-    <button
-      onClick={like}
-      disabled={disabled}
-      className={`px-3 py-1 rounded-md border ${state === 'liked' ? 'bg-brand text-white' : 'hover:bg-gray-50'}`}
-      aria-pressed={state === 'liked'}
-      aria-busy={state === 'loading'}
-    >
-      {state === 'loading' ? 'Liking...' : state === 'liked' ? 'Liked' : 'Like'}
-    </button>
+    <>
+      {state === 'liked' ? (
+        <button
+          onClick={like}
+          disabled={disabled}
+          className={`px-3 py-1 rounded-md border bg-brand text-white`}
+          aria-pressed="true"
+          aria-busy="false"
+        >
+          Liked
+        </button>
+      ) : (
+        <button
+          onClick={like}
+          disabled={disabled}
+          className={`px-3 py-1 rounded-md border hover:bg-gray-50`}
+          aria-pressed="false"
+          aria-busy="false"
+        >
+          {state === 'loading' ? 'Liking...' : 'Like'}
+        </button>
+      )}
+    </>
   );
 }

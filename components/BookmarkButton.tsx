@@ -38,7 +38,7 @@ export default function BookmarkButton({ articleId }: { articleId: number }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [session?.user?.id, articleId, supabase]);
+  }, [session, session?.user?.id, articleId, supabase]);
 
   async function handleClick() {
     console.log('BookmarkButton handleClick', { session, articleId, bookmarked });
@@ -85,21 +85,30 @@ export default function BookmarkButton({ articleId }: { articleId: number }) {
   }
 
   return (
-    <div style={{ display: 'inline-block' }}>
-      <button
-        className={
-          "bookmark-btn px-3 py-1 rounded-full border text-sm " +
-          (bookmarked ? "bg-yellow-200 border-yellow-400 text-yellow-900" : "bg-white border-gray-300 text-gray-700 hover:bg-yellow-50")
-        }
-        onClick={handleClick}
-        type="button"
-        aria-pressed={bookmarked ? 'true' : 'false'}
-        disabled={loading}
-      >
-        {bookmarked ? "Bookmarked" : "Bookmark"}
-      </button>
+    <div className="inline-block">
+      {bookmarked ? (
+        <button
+          className={"bookmark-btn px-3 py-1 rounded-full border text-sm bg-yellow-200 border-yellow-400 text-yellow-900"}
+          onClick={handleClick}
+          type="button"
+          aria-pressed="true"
+          disabled={loading}
+        >
+          Bookmarked
+        </button>
+      ) : (
+        <button
+          className={"bookmark-btn px-3 py-1 rounded-full border text-sm bg-white border-gray-300 text-gray-700 hover:bg-yellow-50"}
+          onClick={handleClick}
+          type="button"
+          aria-pressed="false"
+          disabled={loading}
+        >
+          Bookmark
+        </button>
+      )}
       {error && (
-        <div style={{ color: 'red', fontSize: 13, marginTop: 4 }}>{error}</div>
+        <div className="text-red-600 text-xs mt-1">{error}</div>
       )}
     </div>
   );
