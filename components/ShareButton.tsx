@@ -7,7 +7,6 @@ type ShareButtonProps = {
   title: string;
   excerpt?: string | null;
   className?: string;
-  variant?: 'inline' | 'icon';
 };
 
 function buildUrl(slug: string) {
@@ -24,7 +23,6 @@ export default function ShareButton({
   title,
   excerpt,
   className,
-  variant = 'inline',
 }: ShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -35,8 +33,8 @@ export default function ShareButton({
 
   async function nativeShare() {
     try {
-      if ((navigator as any).share) {
-        await (navigator as any).share({ title, text: excerpt || title, url });
+      if ('share' in navigator && typeof navigator.share === 'function') {
+        await navigator.share({ title, text: excerpt || title, url });
         return;
       }
       toggle();
@@ -63,27 +61,12 @@ export default function ShareButton({
   }
 
   const panel = open ? (
-    <div
-      style={{
-        position: 'absolute',
-        top: '100%',
-        right: 0,
-        marginTop: 4,
-        background: '#fff',
-        border: '1px solid #ccc',
-        borderRadius: 6,
-        padding: 8,
-        zIndex: 20,
-        width: 240,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-        fontSize: 13,
-      }}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="absolute top-full right-0 mt-1 bg-white border border-gray-300 rounded-lg p-2 z-20 w-60 shadow-lg text-sm">
+      <div className="flex flex-col gap-1">
         <button
           type="button"
-            onClick={copyLink}
-            style={{ textAlign: 'left', padding: '4px 6px', borderRadius: 4, background: copied ? '#e6ffe6' : 'transparent' }}
+          onClick={copyLink}
+          className={`text-left px-2 py-1 rounded ${copied ? 'bg-green-100' : ''}`}
         >
           {copied ? 'Copied!' : 'Copy link'}
         </button>
@@ -91,7 +74,7 @@ export default function ShareButton({
           href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ textDecoration: 'none', padding: '4px 6px', borderRadius: 4 }}
+          className="no-underline px-2 py-1 rounded"
         >
           Share on X (Twitter)
         </a>
@@ -99,7 +82,7 @@ export default function ShareButton({
           href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ textDecoration: 'none', padding: '4px 6px', borderRadius: 4 }}
+          className="no-underline px-2 py-1 rounded"
         >
           Share on Facebook
         </a>
@@ -107,7 +90,7 @@ export default function ShareButton({
           href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ textDecoration: 'none', padding: '4px 6px', borderRadius: 4 }}
+          className="no-underline px-2 py-1 rounded"
         >
           Share on WhatsApp
         </a>
@@ -115,14 +98,14 @@ export default function ShareButton({
           href={`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ textDecoration: 'none', padding: '4px 6px', borderRadius: 4 }}
+          className="no-underline px-2 py-1 rounded"
         >
           Share on Telegram
         </a>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          style={{ textAlign: 'left', padding: '4px 6px', borderRadius: 4 }}
+          className="text-left px-2 py-1 rounded"
         >
           Close
         </button>
@@ -131,7 +114,7 @@ export default function ShareButton({
   ) : null;
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }} className={className}>
+    <div className={`relative inline-block ${className ?? ''}`}>
       <button
         type="button"
         onClick={nativeShare}
@@ -139,16 +122,9 @@ export default function ShareButton({
           e.preventDefault();
           toggle();
         }}
-        style={{
-          padding: variant === 'inline' ? '4px 10px' : '4px 6px',
-          border: '1px solid #ccc',
-          borderRadius: 6,
-          background: '#fff',
-          fontSize: 13,
-          cursor: 'pointer',
-        }}
+        className={`px-2 py-1 border border-gray-300 rounded-lg bg-white text-sm cursor-pointer`}
         aria-haspopup="true"
-        aria-expanded={open}
+        aria-expanded="true"
       >
         Share
       </button>

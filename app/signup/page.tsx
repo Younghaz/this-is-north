@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "../../lib/supabase-browser";
 
@@ -54,8 +55,12 @@ export default function SignupPage() {
         if (uploadError) throw uploadError;
       }
       router.push("/login?signup=success");
-    } catch (e: any) {
-      setError(e?.message ?? "Signup failed");
+    } catch (e: unknown) {
+      if (typeof e === 'object' && e !== null && 'message' in e) {
+        setError((e as { message?: string }).message ?? "Signup failed");
+      } else {
+        setError("Signup failed");
+      }
     } finally {
       setBusy(false);
     }
@@ -65,29 +70,32 @@ export default function SignupPage() {
     <main className="max-w-md mx-auto py-8">
       <h1 className="text-2xl font-bold mb-4">Sign Up</h1>
       <form onSubmit={handleSignup} className="signup-form-card">
-        <div className="signup-avatar-upload" style={{ marginBottom: 18 }}>
+        <div className="mb-5">
           <div
-            className="signup-avatar-circle"
+            className="w-24 h-24 rounded-full flex items-center justify-center bg-gray-200 text-gray-500 text-sm cursor-pointer"
             onClick={() => avatarInputRef.current?.click()}
-            style={{ cursor: 'pointer' }}
             title="Add Photo"
           >
             {avatarFile ? (
-              <img
+              <Image
                 src={URL.createObjectURL(avatarFile)}
                 alt="Profile preview"
-                className="signup-avatar-img"
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-full object-cover border"
               />
             ) : (
-              <span className="signup-avatar-placeholder">Add Photo</span>
+              <span>Add Photo</span>
             )}
           </div>
           <input
             ref={avatarInputRef}
             type="file"
             accept="image/*"
-            style={{ display: 'none' }}
+            className="hidden"
             onChange={e => setAvatarFile(e.target.files?.[0] || null)}
+            title="Upload avatar"
+            placeholder="Choose avatar image"
           />
         </div>
         <div className="signup-form-group">

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrowserSupabase } from '../lib/supabase-browser';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import Image from 'next/image';
 
 type Category = { id: number; slug: string; name_en: string | null };
 
@@ -33,7 +35,7 @@ function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 }
 
-async function uploadToBucket(supabase: any, bucket: 'images' | 'videos', file: File, prefix = '') {
+async function uploadToBucket(supabase: SupabaseClient, bucket: 'images' | 'videos', file: File, prefix = '') {
   const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
   const fileName = `${crypto.randomUUID()}.${ext}`;
   const cleanPrefix = prefix.replace(/^\/+|\/+$/g, '');
@@ -77,21 +79,21 @@ function MediaInputs(props: { value: MediaState; onChange: (v: MediaState) => vo
   }
 
   return (
-    <div style={{ borderTop: '1px solid #ddd', paddingTop: 12, marginTop: 12 }}>
-      <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Media</h3>
+    <div className="border-t border-gray-300 pt-3 mt-3">
+      <h3 className="font-semibold mb-2 text-base">Media</h3>
 
       {/* Cover image */}
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ display: 'block', fontSize: 14, marginBottom: 6 }}>
-          Cover image (optional)
-        </label>
-        <input type="file" accept="image/*" onChange={(e) => onPickImage(e.target.files?.[0] ?? null)} />
+      <div className="mb-3">
+        <label className="block text-sm mb-1">Cover image (optional)</label>
+        <input type="file" accept="image/*" title="Select cover image" onChange={(e) => onPickImage(e.target.files?.[0] ?? null)} className="block" />
         {value.coverImagePreview && (
-          <div style={{ marginTop: 8 }}>
-            <img
+          <div className="mt-2">
+            <Image
               src={value.coverImagePreview}
               alt="cover preview"
-              style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'cover' }}
+              width={400}
+              height={200}
+              className="max-w-full max-h-[200px] object-cover"
             />
           </div>
         )}
@@ -99,21 +101,21 @@ function MediaInputs(props: { value: MediaState; onChange: (v: MediaState) => vo
           placeholder="Alt text"
           value={value.coverImageAlt}
           onChange={(e) => onChange({ ...value, coverImageAlt: e.target.value })}
-          style={{ display: 'block', marginTop: 8, width: '100%', padding: 6 }}
+          className="block mt-2 w-full p-2 border rounded"
         />
       </div>
 
       {/* Video */}
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ display: 'block', fontSize: 14, marginBottom: 6 }}>Video (optional)</label>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input type="file" accept="video/*" onChange={(e) => onPickVideo(e.target.files?.[0] ?? null)} />
+      <div className="mb-3">
+        <label className="block text-sm mb-1">Video (optional)</label>
+        <div className="flex gap-2 items-center flex-wrap">
+          <input type="file" accept="video/*" title="Select video file" onChange={(e) => onPickVideo(e.target.files?.[0] ?? null)} className="block" />
         </div>
         {value.videoPreview && (
           <video
             src={value.videoPreview}
             controls
-            style={{ marginTop: 8, maxWidth: '100%', maxHeight: 240 }}
+            className="mt-2 max-w-full max-h-[240px]"
           />
         )}
       </div>
@@ -145,13 +147,19 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
     videoPreview: null,
   });
 
-  const [existingMedia, setExistingMedia] = useState({
+  const [existingMedia, setExistingMedia] = useState<{
+    cover_image_path: string | null;
+    cover_image_alt: string | null;
+    video_provider: string | null;
+    video_url: string | null;
+    video_path: string | null;
+  }>({
     cover_image_path: null,
     cover_image_alt: null,
     video_provider: null,
     video_url: null,
     video_path: null,
-  } as any);
+  });
 
   // STEP B — current user
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -202,8 +210,12 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
           video_path: data.video_path ?? null,
         });
         setMedia((m) => ({ ...m, coverImageAlt: data.cover_image_alt ?? '' }));
-      } catch (e: any) {
-        setErr(e?.message ?? 'Failed to load article');
+      } catch (e) {
+        if (e instanceof Error) {
+          setErr(e.message ?? 'Failed to load article');
+        } else {
+          setErr('Failed to load article');
+        }
       } finally {
         setLoading(false);
       }
@@ -244,7 +256,7 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
         payload.video_url = upv.publicUrl;
         payload.video_path = upv.path;
       } else if (articleId) {
-        payload.video_provider = existingMedia.video_provider;
+        payload.video_provider = existingMedia.video_provider === 'file' ? 'file' : null;
         payload.video_url = existingMedia.video_url;
         payload.video_path = existingMedia.video_path;
       } else {
@@ -257,7 +269,7 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
         const { data: current } =
           articleId
             ? await supabase.from('articles').select('published_at').eq('id', articleId).maybeSingle()
-            : { data: null as any };
+            : { data: null as { published_at?: string | null } };
         const alreadyPublished = !!current?.published_at;
         if (!alreadyPublished) {
           payload.published_at = new Date().toISOString();
@@ -285,22 +297,26 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
       }
 
       router.push(afterSaveHref);
-    } catch (e: any) {
-      setErr(e?.message ?? 'Failed to save article');
+    } catch (e) {
+      if (e instanceof Error) {
+        setErr(e.message ?? 'Failed to save article');
+      } else {
+        setErr('Failed to save article');
+      }
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700 }}>
+    <div className="grid gap-3">
+      <h1 className="text-2xl font-bold">
         {articleId ? 'Edit Article' : 'New Article'}
       </h1>
       {loading && <p>Loading…</p>}
-      {err && <p style={{ color: 'crimson' }}>{err}</p>}
+      {err && <p className="text-red-600">{err}</p>}
 
-      <label style={{ display: 'grid', gap: 6 }}>
+      <label className="grid gap-1">
         <span>Title</span>
         <input
           value={title}
@@ -308,25 +324,25 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
             setTitle(e.target.value);
             if (!articleId) setSlug(slugify(e.target.value));
           }}
-          style={{ padding: 8 }}
+          className="p-2 border rounded"
         />
       </label>
 
-      <label style={{ display: 'grid', gap: 6 }}>
+      <label className="grid gap-1">
         <span>Slug</span>
         <input
           value={slug}
           onChange={(e) => setSlug(slugify(e.target.value))}
-          style={{ padding: 8 }}
+          className="p-2 border rounded"
         />
       </label>
 
-      <label style={{ display: 'grid', gap: 6 }}>
+      <label className="grid gap-1">
         <span>Category</span>
         <select
           value={categoryId ?? ''}
           onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
-          style={{ padding: 8 }}
+          className="p-2 border rounded"
         >
           <option value="">Select category…</option>
           {categories.map((c) => (
@@ -337,41 +353,41 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
         </select>
       </label>
 
-      <label style={{ display: 'grid', gap: 6 }}>
+      <label className="grid gap-1">
         <span>Status</span>
         <select
           value={status}
-          onChange={(e) => setStatus(e.target.value as any)}
-          style={{ padding: 8 }}
+          onChange={(e) => setStatus(e.target.value as 'draft' | 'published')}
+          className="p-2 border rounded"
         >
           <option value="draft">Draft</option>
           <option value="published">Published</option>
         </select>
       </label>
 
-      <label style={{ display: 'grid', gap: 6 }}>
+      <label className="grid gap-1">
         <span>Content (HTML allowed)</span>
         <textarea
           id="article-content-editor"
           rows={14}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          style={{ width: '100%', padding: 10 }}
+          className="w-full p-2 border rounded"
           placeholder="<p>Your article HTML…</p>"
         />
       </label>
 
       <MediaInputs value={media} onChange={setMedia} />
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={handleSave} disabled={!canSave || saving} style={{ padding: '8px 12px' }}>
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={!canSave || saving} className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50">
           {saving ? 'Saving…' : 'Save'}
         </button>
         <button
           type="button"
           disabled={saving}
           onClick={() => router.push(afterSaveHref)}
-          style={{ padding: '8px 12px' }}
+          className="px-3 py-2 bg-gray-200 text-gray-700 rounded"
         >
           Cancel
         </button>

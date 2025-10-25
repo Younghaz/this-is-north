@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
 type Props = {
@@ -77,7 +78,14 @@ export default function MediaPicker({
       alert('Please select a video file');
       return;
     }
-    const [url] = await uploadFiles({ 0: file, length: 1, item: (i: number) => file } as any, vidBucket);
+    // Create a FileList-like array for uploadFiles
+    const filesArr = [file];
+    const [url] = await uploadFiles({
+      ...filesArr,
+      length: 1,
+      item: (i: number) => filesArr[i],
+      [Symbol.iterator]: function* () { yield* filesArr; }
+    } as unknown as FileList, vidBucket);
     setVideo(url || null);
 
     const input = document.getElementById(videoInputId) as HTMLInputElement | null;
@@ -126,9 +134,9 @@ export default function MediaPicker({
         <div className="not-prose my-2">
           <video
             controls
-            playsinline
+            playsInline
             preload="metadata"
-            style={{ width: '100%', maxHeight: '50vh', borderRadius: 8 }}
+            className="w-full max-h-[50vh] rounded-lg"
             src={video}
           />
         </div>
@@ -136,7 +144,7 @@ export default function MediaPicker({
       {photos.length > 0 ? (
         <div className="grid grid-cols-2 gap-2">
           {photos.map((src, i) => (
-            <img key={i} src={src} alt="" style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 6 }} />
+            <Image key={i} src={src} alt="" width={320} height={160} className="w-full h-40 object-cover rounded-md" />
           ))}
         </div>
       ) : null}

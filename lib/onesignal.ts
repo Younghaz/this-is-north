@@ -1,6 +1,15 @@
 export function loadOneSignal(): void {
   if (typeof window === 'undefined') return;
-  const win = window as any;
+  type OneSignalType = {
+  _initCalled?: boolean;
+  push?: (...args: unknown[]) => void;
+  init?: (config: Record<string, unknown>) => Promise<void>;
+  };
+  const win = window as Window & typeof globalThis & {
+    OneSignal?: OneSignalType;
+    _initCalled?: boolean;
+    __oneSignalScriptLoading?: boolean;
+  };
   if (win.OneSignal && win.OneSignal._initCalled) return;
   if (document.getElementById('onesignal-sdk')) return;
   if (win.__oneSignalScriptLoading) return;

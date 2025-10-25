@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { getBrowserSupabase } from '../lib/supabase-browser';
 
 type Profile = {
@@ -39,7 +39,7 @@ export default function CommentsThread({ articleId }: { articleId: number }) {
     return p?.display_name || p?.username || 'user';
   }
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
@@ -69,14 +69,18 @@ export default function CommentsThread({ articleId }: { articleId: number }) {
 
       if (error) throw error;
       setComments((data as unknown as CommentRow[]) ?? []);
-    } catch (e: any) {
-      setErr(e?.message ?? 'Failed to load comments');
+    } catch (e) {
+      if (e instanceof Error) {
+        setErr(e.message ?? 'Failed to load comments');
+      } else {
+        setErr('Failed to load comments');
+      }
     } finally {
       setLoading(false);
     }
-  }
+  }, [articleId, supabase]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [articleId]);
+  useEffect(() => { load(); }, [articleId, load]);
 
   const tree = useMemo(() => {
     const byParent = new Map<number | 'root', CommentRow[]>();
@@ -96,12 +100,16 @@ export default function CommentsThread({ articleId }: { articleId: number }) {
     try {
       const { error } = await supabase
         .from('comments')
-        .insert({ article_id: articleId, body }, { returning: 'minimal' });
+        .insert({ article_id: articleId, body });
       if (error) throw error;
       setNewBody('');
       await load();
-    } catch (e: any) {
-      alert(e?.message ?? 'Failed to comment.');
+    } catch (e) {
+      if (e instanceof Error) {
+        alert(e.message ?? 'Failed to comment.');
+      } else {
+        alert('Failed to comment.');
+      }
     }
   }
 
@@ -112,13 +120,17 @@ export default function CommentsThread({ articleId }: { articleId: number }) {
     try {
       const { error } = await supabase
         .from('comments')
-        .insert({ article_id: articleId, parent_id: parentId, body }, { returning: 'minimal' });
+        .insert({ article_id: articleId, parent_id: parentId, body });
       if (error) throw error;
       setReplyBody('');
       setReplyOpenFor(null);
       await load();
-    } catch (e: any) {
-      alert(e?.message ?? 'Failed to reply.');
+    } catch (e) {
+      if (e instanceof Error) {
+        alert(e.message ?? 'Failed to reply.');
+      } else {
+        alert('Failed to reply.');
+      }
     }
   }
 
@@ -132,69 +144,73 @@ export default function CommentsThread({ articleId }: { articleId: number }) {
       const { error } = await supabase.from('comments').delete().eq('id', id);
       if (error) throw error;
       await load();
-    } catch (e: any) {
-      alert(e?.message ?? 'Failed to delete.');
+    } catch (e) {
+      if (e instanceof Error) {
+        alert(e.message ?? 'Failed to delete.');
+      } else {
+        alert('Failed to delete.');
+      }
     }
   }
 
   const roots = tree.get('root') ?? [];
 
   return (
-    <section style={{ marginTop: 24 }}>
-      <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Comments</h2>
+    <section className="mt-6">
+      <h2 className="text-2xl font-bold mb-2">Comments</h2>
 
       {loading ? <p>Loading…</p> : null}
-      {err ? <p style={{ color: 'crimson' }}>{err}</p> : null}
+      {err ? <p className="text-red-600">{err}</p> : null}
 
       {sessionUserId ? (
-        <div style={{ margin: '12px 0' }}>
+        <div className="my-3">
           <textarea
             rows={4}
-            style={{ width: '100%', padding: 8 }}
+            className="w-full p-2 border rounded"
             placeholder="Write a comment…"
             value={newBody}
             onChange={(e) => setNewBody(e.target.value)}
           />
-          <button onClick={addComment} style={{ marginTop: 8, padding: '6px 10px' }}>
+          <button onClick={addComment} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50">
             Post comment
           </button>
         </div>
       ) : (
-        <div style={{ margin: '12px 0' }}>
-          You must be signed in to comment. <a href={`/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/')}`}>Sign in</a>
+        <div className="my-3">
+          You must be signed in to comment. <a className="underline text-blue-600" href={`/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/')}`}>Sign in</a>
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 12 }}>
+      <div className="grid gap-3">
         {roots.map((c) => (
-          <div key={c.id} style={{ border: '1px solid #ccc', padding: 12 }}>
-            <div style={{ fontSize: 12, color: '#555' }}>
+          <div key={c.id} className="border rounded p-3">
+            <div className="text-xs text-gray-600">
               {nameFor(c.profiles)} • {new Date(c.created_at).toLocaleString()}
             </div>
-            <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{c.body}</div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+            <div className="mt-2 whitespace-pre-wrap">{c.body}</div>
+            <div className="flex gap-3 mt-2">
               {sessionUserId ? (
-                <button onClick={() => setReplyOpenFor(replyOpenFor === c.id ? null : c.id)}>
+                <button onClick={() => setReplyOpenFor(replyOpenFor === c.id ? null : c.id)} className="text-blue-600 underline">
                   {replyOpenFor === c.id ? 'Cancel' : 'Reply'}
                 </button>
               ) : null}
               {(isAdmin || (c.user_id ?? c.author_id) === sessionUserId) ? (
-                <button onClick={() => delComment(c.id, c.user_id ?? c.author_id)} style={{ color: 'crimson' }}>
+                <button onClick={() => delComment(c.id, c.user_id ?? c.author_id)} className="text-red-600">
                   Delete
                 </button>
               ) : null}
             </div>
 
-            <div style={{ marginTop: 10, marginLeft: 16, borderLeft: '3px solid #eee', paddingLeft: 12 }}>
+            <div className="mt-3 ml-4 border-l-4 border-gray-200 pl-3">
               {(tree.get(c.id) ?? []).map((r) => (
-                <div key={r.id} style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, color: '#555' }}>
+                <div key={r.id} className="mb-2">
+                  <div className="text-xs text-gray-600">
                     {nameFor(r.profiles)} • {new Date(r.created_at).toLocaleString()}
                   </div>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{r.body}</div>
+                  <div className="whitespace-pre-wrap">{r.body}</div>
                   {(isAdmin || (r.user_id ?? r.author_id) === sessionUserId) ? (
                     <div>
-                      <button onClick={() => delComment(r.id, r.user_id ?? r.author_id)} style={{ color: 'crimson', marginTop: 4 }}>
+                      <button onClick={() => delComment(r.id, r.user_id ?? r.author_id)} className="text-red-600 mt-1">
                         Delete
                       </button>
                     </div>
@@ -206,12 +222,12 @@ export default function CommentsThread({ articleId }: { articleId: number }) {
                 <div>
                   <textarea
                     rows={3}
-                    style={{ width: '100%', padding: 8, marginTop: 8 }}
+                    className="w-full p-2 border rounded mt-2"
                     placeholder="Write a reply…"
                     value={replyBody}
                     onChange={(e) => setReplyBody(e.target.value)}
                   />
-                  <button onClick={() => addReply(c.id)} style={{ marginTop: 6, padding: '6px 10px' }}>
+                  <button onClick={() => addReply(c.id)} className="mt-2 px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50">
                     Reply
                   </button>
                 </div>

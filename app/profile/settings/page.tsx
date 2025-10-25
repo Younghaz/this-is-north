@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import OneSignalPromptButton from '@/components/OneSignalPromptButton';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { useTheme } from '@/components/ThemeContext';
@@ -61,8 +62,14 @@ export default function ProfileSettingsPage() {
           // Optionally create a blank profile row if not found
           await supabase.from('profiles').insert({ id: u.id }).select().single();
         }
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Failed to load profile.');
+      } catch (e: unknown) {
+        if (!cancelled) {
+          if (typeof e === 'object' && e !== null && 'message' in e) {
+            setError((e as { message?: string }).message || 'Failed to load profile.');
+          } else {
+            setError('Failed to load profile.');
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -126,8 +133,12 @@ export default function ProfileSettingsPage() {
 
       setAvatarUrl(finalAvatarUrl || null);
       setDirty(false);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to save profile.');
+    } catch (e: unknown) {
+      if (typeof e === 'object' && e !== null && 'message' in e) {
+        setError((e as { message?: string }).message || 'Failed to save profile.');
+      } else {
+        setError('Failed to save profile.');
+      }
     } finally {
       setSaving(false);
     }
@@ -154,62 +165,27 @@ export default function ProfileSettingsPage() {
   const previewSrc = avatarPreview || avatarUrl;
 
   return (
-    <div
-      style={{
-        maxWidth: 480,
-        margin: '40px auto',
-        padding: 24,
-        background: '#fff',
-        borderRadius: 12,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-      }}
-    >
-      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 24 }}>Settings</h1>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-        }}
-      >
-        <span style={{ fontSize: 18 }}>Dark mode</span>
+    <div className="max-w-xl mx-auto my-10 p-6 bg-white rounded-xl shadow-lg">
+      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-lg">Dark mode</span>
         <button
           onClick={toggleTheme}
-          style={{
-            width: 56,
-            height: 32,
-            borderRadius: 16,
-            border: '1px solid #bbb',
-            background: theme === 'dark' ? '#222' : '#eee',
-            position: 'relative',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-          }}
-          aria-pressed={theme === 'dark'}
+          className={`w-14 h-8 rounded-full border border-gray-400 relative cursor-pointer transition-colors duration-200 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-200'}`}
+          aria-pressed="true"
+          title="Toggle dark mode"
         >
           <span
-            style={{
-              display: 'block',
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              background: theme === 'dark' ? '#ffd600' : '#222',
-              position: 'absolute',
-              top: 3,
-              left: theme === 'dark' ? 28 : 4,
-              transition: 'left 0.2s, background 0.2s',
-            }}
+            className={`block w-6 h-6 rounded-full absolute top-1 transition-all duration-200 ${theme === 'dark' ? 'bg-yellow-400 left-7' : 'bg-gray-900 left-1'}`}
           />
         </button>
       </div>
-      <div style={{ color: '#888', fontSize: 15, marginTop: 24 }}>
+      <div className="text-gray-500 text-sm mt-6">
         Switch between light and dark mode. Your preference is saved.
       </div>
-
-        <div style={{ marginBottom: 24 }}>
-          <OneSignalPromptButton />
-        </div>
+      <div className="mb-6">
+        <OneSignalPromptButton />
+      </div>
 
       {error ? (
         <div className="mb-4 text-sm text-red-600 border border-red-300 bg-red-50 p-2 rounded">
@@ -220,18 +196,22 @@ export default function ProfileSettingsPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Email (readonly) */}
         <div className="space-y-1">
-          <label className="block text-sm font-medium">Email</label>
-            <input
-              value={email || ''}
-              readOnly
-              className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
-            />
+          <label className="block text-sm font-medium" htmlFor="profile-email">Email</label>
+          <input
+            id="profile-email"
+            value={email || ''}
+            readOnly
+            className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
+            title="Email address"
+            placeholder="Email address"
+          />
         </div>
 
         {/* Display Name */}
         <div className="space-y-1">
-          <label className="block text-sm font-medium">Display Name</label>
+          <label className="block text-sm font-medium" htmlFor="profile-display-name">Display Name</label>
           <input
+            id="profile-display-name"
             value={displayName}
             onChange={(e) => {
               setDisplayName(e.target.value);
@@ -240,6 +220,7 @@ export default function ProfileSettingsPage() {
             maxLength={80}
             placeholder="e.g. Amina Bello"
             className="w-full border rounded px-3 py-2"
+            title="Display name"
           />
           <p className="text-xs text-gray-500">
             Shown in feed & comments. Leave blank to fall back to username.
@@ -248,11 +229,13 @@ export default function ProfileSettingsPage() {
 
         {/* Avatar Upload */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Avatar</label>
+          <label className="block text-sm font-medium" htmlFor="avatarFile">Avatar</label>
           {previewSrc ? (
-            <img
+            <Image
               src={previewSrc}
               alt="Avatar preview"
+              width={96}
+              height={96}
               className="w-24 h-24 rounded-full object-cover border"
             />
           ) : (
@@ -266,6 +249,8 @@ export default function ProfileSettingsPage() {
             accept="image/*"
             onChange={(e) => onPickAvatar(e.target.files?.[0] || null)}
             className="block text-sm"
+            title="Upload avatar"
+            placeholder="Choose avatar image"
           />
           <p className="text-xs text-gray-500">
             Recommended: square image (e.g. 256x256). Max a few MB.

@@ -17,20 +17,18 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+  // Removed unused userId state
   const bellRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // Fetch notifications for logged-in user
   useEffect(() => {
     const supabase = getBrowserSupabase();
-    let authSub: any;
-    let channel: any;
+    let channel: ReturnType<typeof supabase.channel> | undefined;
     async function load() {
       setLoading(true);
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth?.user?.id;
-      setUserId(uid ?? null);
       if (!uid) {
         setNotifications([]);
         setLoading(false);
@@ -59,12 +57,7 @@ export default function NotificationBell() {
         .subscribe();
     }
     load();
-    authSub = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id ?? null);
-      load();
-    });
     return () => {
-      authSub?.data?.subscription?.unsubscribe?.();
       if (channel) supabase.removeChannel(channel);
     };
   }, []);
@@ -81,19 +74,12 @@ export default function NotificationBell() {
   }, [open]);
 
   return (
-    <div ref={bellRef} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={bellRef} className="relative inline-block">
       <button
         aria-label="Notifications"
-        style={{
-          position: 'relative',
-          padding: 8,
-          borderRadius: '50%',
-          background: open ? '#f3f4f6' : 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          outline: 'none',
-        }}
+        className={`relative p-2 rounded-full ${open ? 'bg-gray-100' : 'bg-transparent'} border-none cursor-pointer outline-none`}
         onClick={() => setOpen((v) => !v)}
+        type="button"
       >
         {/* Bell icon SVG */}
         <svg
@@ -102,7 +88,7 @@ export default function NotificationBell() {
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          style={{ width: 24, height: 24, color: '#374151' }}
+          className="w-6 h-6 text-gray-700"
         >
           <path
             strokeLinecap="round"
@@ -111,63 +97,25 @@ export default function NotificationBell() {
           />
         </svg>
         {unreadCount > 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              top: 2,
-              right: 2,
-              background: 'red',
-              color: 'white',
-              fontSize: 12,
-              borderRadius: '50%',
-              padding: '0 6px',
-              minWidth: 18,
-              textAlign: 'center',
-              border: '2px solid #fff',
-              lineHeight: '18px',
-            }}
-          >
+          <span className="absolute top-0 right-0 bg-red-600 text-white text-xs rounded-full px-2 min-w-[18px] text-center border-2 border-white leading-[18px]">
             {unreadCount}
           </span>
         )}
       </button>
       {/* Dropdown */}
       {open && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            marginTop: 8,
-            width: 320,
-            maxHeight: 384,
-            background: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            boxShadow: '0 2px 16px rgba(0,0,0,0.15)',
-            zIndex: 100,
-            overflowY: 'auto',
-          }}
-        >
-          <div style={{ padding: '16px', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151' }}>
-            Notifications
-          </div>
+        <div className="absolute right-0 mt-2 w-80 max-h-96 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-y-auto">
+          <div className="px-4 py-4 border-b font-semibold text-gray-700">Notifications</div>
           {loading ? (
-            <div style={{ padding: 16, textAlign: 'center', color: '#6b7280', fontSize: 14 }}>Loading…</div>
+            <div className="py-4 text-center text-gray-400 text-sm">Loading…</div>
           ) : notifications.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: '#6b7280', fontSize: 14 }}>No notifications</div>
+            <div className="py-4 text-center text-gray-400 text-sm">No notifications</div>
           ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            <ul className="list-none m-0 p-0">
               {notifications.map((n, idx) => (
                 <li
                   key={n.id}
-                  style={{
-                    padding: '12px 16px',
-                    borderBottom: '1px solid #f3f4f6',
-                    background: n.read ? '#fff' : '#e6f7ff',
-                    transition: 'background 0.2s',
-                    cursor: n.read ? 'default' : 'pointer',
-                    opacity: n.read ? 0.7 : 1,
-                  }}
+                  className={`px-4 py-3 border-b transition-colors ${n.read ? 'bg-white opacity-70 cursor-default' : 'bg-blue-50 cursor-pointer'}`}
                   onClick={async () => {
                     if (n.read) return;
                     setNotifications((prev) => prev.map((x, i) => i === idx ? { ...x, read: true } : x));
@@ -176,15 +124,15 @@ export default function NotificationBell() {
                   }}
                   title={n.read ? undefined : 'Mark as read'}
                 >
-                  <div style={{ fontWeight: n.read ? 500 : 700, color: '#111827' }}>{n.message}</div>
+                  <div className={`font-${n.read ? 'medium' : 'bold'} text-gray-900`}>{n.message}</div>
                   {n.url ? (
-                    <a href={n.url} style={{ color: '#2563eb', textDecoration: 'underline', fontSize: 13 }} onClick={e => e.stopPropagation()}>
+                    <a href={n.url} className="text-blue-600 underline text-xs" onClick={e => e.stopPropagation()}>
                       View
                     </a>
                   ) : null}
-                  <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{new Date(n.created_at).toLocaleString()}</div>
+                  <div className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</div>
                   {!n.read && (
-                    <span style={{ marginLeft: 8, color: '#2563eb', fontSize: 11 }}>(Click to mark as read)</span>
+                    <span className="ml-2 text-blue-600 text-xs">(Click to mark as read)</span>
                   )}
                 </li>
               ))}

@@ -65,7 +65,9 @@ export async function POST(req: NextRequest) {
     console.log('[comments] inserting…', { articleId, userId });
     const { error } = await supabase
       .from('comments')
-      .insert({ article_id: articleId, user_id: userId, body: text, status: 'visible' }, { returning: 'minimal' });
+      .insert([
+        { article_id: articleId, user_id: userId, body: text, status: 'visible' }
+      ]);
 
     if (error) {
       console.error('[comments] insert error:', error);
@@ -74,8 +76,13 @@ export async function POST(req: NextRequest) {
 
     console.log('[comments] success in', Date.now() - startedAt, 'ms');
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    const msg = e?.message || String(e);
+  } catch (e) {
+    let msg: string;
+    if (e instanceof Error) {
+      msg = e.message;
+    } else {
+      msg = String(e);
+    }
     console.error('[comments] server error:', msg);
     const status = msg === 'timeout' ? 504 : 500;
     return NextResponse.json({ ok: false, error: msg }, { status });
