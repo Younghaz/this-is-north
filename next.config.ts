@@ -1,16 +1,15 @@
+// next.config.ts
+import type { NextConfig } from "next";
 import path from "path";
-import { fileURLToPath } from "url";
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
+  // Ignore ESLint build errors for now so Vercel can deploy
   eslint: {
-    // ✅ Allow Vercel builds to pass even if there are lint warnings
     ignoreDuringBuilds: true,
   },
+
+  // Add path alias support
   webpack: (config) => {
-    // ✅ Fix for @/* path aliases
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
     config.resolve.alias["@"] = path.resolve(__dirname);
     return config;
   },
