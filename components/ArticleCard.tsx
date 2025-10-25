@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { makeExcerptFromHtml } from '../lib/excerpt';
 import { publicStorageUrl } from '../lib/public-url';
 import LikeButton from './LikeButton';
@@ -50,33 +51,23 @@ export default function ArticleCard({ article }: { article: Article }) {
 
   return (
     <li
-      className="article-card"
-      style={{
-        borderRadius: 10,
-        padding: 14,
-        display: 'grid',
-        gap: 10,
-        fontFamily: 'system-ui, sans-serif',
-      }}
+      className="article-card rounded-xl p-4 grid gap-2 font-sans"
     >
       {/* 👤 Author */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <img
+  <div className="flex items-center gap-2">
+        <Image
           src={avatarUrl}
           alt={authorName}
           width={40}
           height={40}
-          loading="lazy"
-          style={{
-            borderRadius: '50%',
-            objectFit: 'cover',
-            border: '1px solid #ccc',
-          }}
+          className="rounded-full object-cover border border-gray-300"
+          priority={false}
+          unoptimized
         />
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{authorName}</div>
+          <div className="font-semibold text-sm">{authorName}</div>
           {article.published_at && (
-            <div style={{ fontSize: 12, color: '#777' }}>
+            <div className="text-xs text-gray-500">
               {new Date(article.published_at).toLocaleDateString()}
             </div>
           )}
@@ -84,22 +75,16 @@ export default function ArticleCard({ article }: { article: Article }) {
       </div>
 
       {/* 📰 Title & Excerpt */}
-      <div style={{ marginTop: 6 }}>
+  <div className="mt-2">
         <Link
           href={`/article/${article.slug}`}
-          className="article-card-title"
-          style={{
-            fontSize: 18,
-            fontWeight: 600,
-            textDecoration: 'none',
-            lineHeight: 1.3,
-          }}
+          className="article-card-title text-lg font-semibold no-underline leading-snug"
         >
           {article.title}
         </Link>
 
         {excerpt && (
-          <p className="article-card-excerpt" style={{ marginTop: 4, fontSize: 15, lineHeight: 1.4 }}>
+          <p className="article-card-excerpt mt-1 text-base leading-relaxed">
             {excerpt}
           </p>
         )}
@@ -107,53 +92,35 @@ export default function ArticleCard({ article }: { article: Article }) {
 
       {/* 📸 Media */}
       {vidSrc ? (
-  <Link href={`/article/${article.slug}`} className="article-card-media-link" style={{ display: 'block' }}>
+        <Link href={`/article/${article.slug}`} className="article-card-media-link block">
           <video
             src={vidSrc}
             controls
             playsInline
             preload="metadata"
-            style={{
-              width: '100%',
-              height: 'auto',
-              maxHeight: '70vh',
-              objectFit: 'contain',
-              borderRadius: 8,
-              background: '#000',
-            }}
+            className="w-full h-auto max-h-[70vh] object-contain rounded-lg bg-black"
           />
         </Link>
       ) : imgSrc ? (
-        <Link href={`/article/${article.slug}`} style={{ display: 'block' }}>
-          <img
+        <Link href={`/article/${article.slug}`} className="block">
+          <Image
             src={imgSrc}
             alt={article.cover_image_alt ?? ''}
-            className="article-card-media-img"
-            style={{
-              width: '100%',
-              height: 'auto',
-              maxHeight: '70vh',
-              objectFit: 'contain',
-              borderRadius: 8,
-            }}
+            width={1200}
+            height={700}
+            className="article-card-media-img w-full h-auto max-h-[70vh] object-contain rounded-lg"
+            priority={false}
+            unoptimized
           />
         </Link>
       ) : null}
 
       {/* 💬 Actions */}
       <div
-        className="article-card-actions"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 10,
-          paddingTop: 8,
-          marginTop: 4,
-        }}
+        className="article-card-actions flex items-center flex-wrap gap-2 pt-2 mt-1"
       >
         <LikeButton articleId={article.id} onLiked={() => setLikes((n) => n + 1)} />
-  <span className="article-card-likes" style={{ fontSize: 13 }}>
+        <span className="article-card-likes text-sm">
           {likes} {likes === 1 ? 'like' : 'likes'}
         </span>
 
@@ -165,7 +132,7 @@ export default function ArticleCard({ article }: { article: Article }) {
 
         <ShareButton slug={article.slug} title={article.title} excerpt={excerpt} />
 
-  <Link href={`/article/${article.slug}`} style={{ marginLeft: 'auto' }}>
+        <Link href={`/article/${article.slug}`} className="ml-auto">
           Read more
         </Link>
       </div>
