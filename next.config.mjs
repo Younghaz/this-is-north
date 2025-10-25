@@ -6,7 +6,6 @@ const nextConfig = {
     optimizePackageImports: ['@supabase/supabase-js'],
   },
 
-  // ✅ Keep your custom allowed dev origins
   allowedDevOrigins: [
     'http://localhost:3000',
     'http://localhost:3001',
@@ -27,15 +26,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // ✅ Optional: disable specific ESLint rules
-  eslintConfig: {
-    rules: {
-      '@typescript-eslint/no-unused-vars': 'off',
-      '@next/next/no-img-element': 'off',
-    },
-  },
-
-  // ✅ Add CSP and security headers
   async headers() {
     return [
       {
@@ -61,7 +51,6 @@ const nextConfig = {
     ];
   },
 
-  // ✅ Keep your custom alias working
   webpack: (config) => {
     config.resolve.alias['@'] = path.resolve(process.cwd());
     return config;
