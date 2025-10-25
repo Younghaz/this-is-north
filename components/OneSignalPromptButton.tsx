@@ -1,4 +1,9 @@
 "use client";
+declare global {
+  interface Window {
+    OneSignal?: Record<string, unknown>;
+  }
+}
 import { useEffect, useState } from "react";
 import { loadOneSignal } from "../lib/onesignal";
 
@@ -16,7 +21,7 @@ export default function OneSignalPromptButton() {
         } else if (!cancelled) {
           setError("OneSignal loaded but prompt not available.");
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) setError("Failed to load OneSignal");
       }
     }
@@ -26,7 +31,7 @@ export default function OneSignalPromptButton() {
 
 
   const handleClick = () => {
-    if (window.OneSignal && window.OneSignal.showSlidedownPrompt) {
+    if (window.OneSignal && typeof window.OneSignal.showSlidedownPrompt === 'function') {
       console.log('[OneSignalPromptButton] showSlidedownPrompt available, calling...');
       window.OneSignal.showSlidedownPrompt();
     } else {
@@ -44,24 +49,14 @@ export default function OneSignalPromptButton() {
       <button
         onClick={handleClick}
         disabled={!ready}
-        style={{
-          padding: "8px 16px",
-          borderRadius: 6,
-          background: ready ? "#2563eb" : "#ccc",
-          color: "#fff",
-          border: "none",
-          cursor: ready ? "pointer" : "not-allowed",
-          margin: 8,
-        }}
+        className={`px-4 py-2 rounded-lg font-semibold text-white ${ready ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer' : 'bg-gray-400 cursor-not-allowed'} my-2 border-none`}
       >
         Enable Push Notifications
       </button>
-      {error && <div style={{ color: "#b91c1c", marginTop: 8 }}>{error}</div>}
+      {error && <div className="text-red-700 mt-2">{error}</div>}
       {/* Diagnostic: show OneSignal keys if error */}
       {error && window.OneSignal && (
-        <pre style={{ color: '#444', background: '#eee', fontSize: 12, marginTop: 8, padding: 8 }}>
-          {JSON.stringify(Object.keys(window.OneSignal), null, 2)}
-        </pre>
+        <pre className="text-gray-700 bg-gray-100 text-xs mt-2 p-2 rounded">{JSON.stringify(Object.keys(window.OneSignal), null, 2)}</pre>
       )}
     </div>
   );

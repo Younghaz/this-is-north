@@ -12,12 +12,11 @@ type Props = {
   format?: string;
 };
 
-export default function AdSenseSlot({ slot, className, style, layout, format }: Props) {
+export default function AdSenseSlot({ slot, className, layout, format }: Props) {
   const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
   useEffect(() => {
     try {
-      // @ts-ignore
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch {
       // ignore rendering errors locally
@@ -28,8 +27,7 @@ export default function AdSenseSlot({ slot, className, style, layout, format }: 
 
   return (
     <ins
-      className={`adsbygoogle ${className ?? ''}`}
-      style={style ?? { display: 'block' }}
+      className={`adsbygoogle ${className ?? ''} block`}
       data-ad-client={client}
       data-ad-slot={slot}
       data-ad-format={format ?? 'auto'}
