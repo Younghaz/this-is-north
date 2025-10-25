@@ -1,3 +1,4 @@
+import Image from 'next/image';
 'use client';
 
 type Props = {
@@ -11,9 +12,9 @@ export default function PostMedia({ photoUrls = [], videoUrl }: Props) {
       <div className="not-prose my-4">
         <video
           controls
-          playsinline
+          playsInline
           preload="metadata"
-          style={{ width: '100%', maxHeight: '70vh', borderRadius: 8, display: 'block' }}
+          className="w-full max-h-[70vh] rounded-lg block"
           src={videoUrl}
         />
       </div>
@@ -27,48 +28,40 @@ export default function PostMedia({ photoUrls = [], videoUrl }: Props) {
   if (photos.length === 1) {
     return (
       <div className="not-prose my-4">
-        <img
+        <Image
           src={photos[0]}
           alt=""
-          style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }}
+          width={1200}
+          height={700}
+          className="w-full h-auto rounded-lg block"
+          priority={false}
+          unoptimized
         />
       </div>
     );
   }
 
-  const gridStyle: React.CSSProperties = {
-    display: 'grid',
-    gap: 8,
-    gridTemplateColumns: photos.length === 2 ? '1fr 1fr' : '1fr 1fr',
-    gridTemplateRows: photos.length === 3 ? 'auto auto' : 'auto auto',
-  };
+  const gridCols = photos.length === 2 ? 'grid-cols-2' : 'grid-cols-2';
+  const gridRows = photos.length === 3 ? 'grid-rows-2' : 'grid-rows-2';
 
   const max = Math.min(photos.length, 4);
   const rest = photos.length - max;
 
   return (
-    <div className="not-prose my-4" style={gridStyle}>
+    <div className={`not-prose my-4 grid gap-2 ${gridCols} ${gridRows}`}>
       {photos.slice(0, max).map((src, i) => (
-        <div key={i} style={{ position: 'relative', overflow: 'hidden', borderRadius: 8 }}>
-          <img
+        <div key={i} className="relative overflow-hidden rounded-lg">
+          <Image
             src={src}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            width={1200}
+            height={700}
+            className="w-full h-full object-cover block"
+            priority={false}
+            unoptimized
           />
           {i === 3 && rest > 0 ? (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'rgba(0,0,0,0.5)',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 24,
-                fontWeight: 600,
-              }}
-            >
+            <div className="absolute inset-0 bg-black bg-opacity-50 text-white flex items-center justify-center text-2xl font-bold">
               +{rest}
             </div>
           ) : null}

@@ -1,4 +1,5 @@
 import { publicStorageUrl } from '../lib/public-url';
+import Image from 'next/image';
 
 type Props = {
   cover_image_path?: string | null;
@@ -61,12 +62,12 @@ export default function ArticleMedia(a: Props) {
     const src = toYouTubeEmbed(a.video_url);
     if (src) {
       return (
-        <div style={{ margin: '12px 0' }}>
-          <div style={{ position: 'relative', paddingTop: '56.25%', minHeight: 180 }}>
+        <div className="my-3">
+          <div className="relative pt-[56.25%] min-h-[180px]">
             <iframe
               src={src}
               title="YouTube video"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+              className="absolute inset-0 w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               referrerPolicy="strict-origin-when-cross-origin"
@@ -74,7 +75,7 @@ export default function ArticleMedia(a: Props) {
             />
           </div>
           {/* Fallback link (useful if a CSP blocks iframe) */}
-          <div style={{ marginTop: 8, fontSize: 14 }}>
+          <div className="mt-2 text-base">
             If the video doesn’t load, open it on YouTube:{" "}
             <a href={src} target="_blank" rel="noopener noreferrer">Watch video</a>
           </div>
@@ -89,7 +90,7 @@ export default function ArticleMedia(a: Props) {
       <video
         src={a.video_url.trim()}
         controls
-        style={{ width: '100%', maxHeight: 480, background: '#000', margin: '12px 0', borderRadius: 6 }}
+        className="w-full max-h-[480px] bg-black my-3 rounded-lg"
       />
     );
   }
@@ -98,19 +99,15 @@ export default function ArticleMedia(a: Props) {
   const img = publicStorageUrl('images', a.cover_image_path);
   if (img) {
     return (
-      <a href={img} target="_blank" rel="noopener noreferrer" style={{ display: 'block', margin: '12px 0' }}>
-        <img
+      <a href={img} target="_blank" rel="noopener noreferrer" className="block my-3">
+        <Image
           src={img}
           alt={a.cover_image_alt ?? ''}
-          style={{
-            width: '100%',
-            height: 'auto',
-            maxHeight: 'clamp(240px, 60vh, 560px)',
-            objectFit: 'contain',
-            background: '#f6f6f6',
-            borderRadius: 6,
-            border: '1px solid #eaeaea',
-          }}
+          width={1200}
+          height={700}
+          className="w-full h-auto max-h-[560px] object-contain bg-gray-100 rounded-lg border border-gray-200"
+          priority={false}
+          unoptimized
         />
       </a>
     );

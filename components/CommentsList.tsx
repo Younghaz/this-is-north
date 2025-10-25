@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image';
 // Use the server-side Supabase client for server components (full access, never exposed to client)
 import { getSupabaseServer } from '@/lib/supabaseServer'
 import DeleteCommentButton from './DeleteCommentButton'
@@ -41,6 +42,7 @@ type Profile = {
   display_name: string | null
   email: string | null
   avatar_url?: string | null
+  is_admin?: boolean
 }
 
 type TreeNode = CommentRow & { children: TreeNode[] }
@@ -117,16 +119,18 @@ export default async function CommentsList({ articleId }: { articleId: number })
     return (
       <div
         key={node.id}
-        className={`mt-3 ${isReply ? 'ml-10 border-l pl-3' : ''}`}
+        className={`mt-3 ${isReply ? 'ml-10 border-l-2 pl-3 border-gray-200' : ''}`}
       >
         <div className="flex items-start gap-3">
-          <img
+          <Image
             src={avatarUrl}
             alt={authorName}
             width={44}
             height={44}
             className="rounded-full border-2 border-blue-200 shadow object-cover flex-shrink-0 bg-gradient-to-br from-blue-100 to-blue-300"
             title={authorEmail || undefined}
+            priority={false}
+            unoptimized
           />
           <div className="flex-1 min-w-0">
             <div className="bg-gray-50 rounded-2xl px-5 py-3 border border-gray-200">

@@ -3,8 +3,8 @@ import { useState } from "react";
 import Link from "next/link";
 import ReplyForm from "./ReplyForm";
 import DeleteCommentButton from "./DeleteCommentButton";
-import Image from "next/image";
 import dayjs from "dayjs";
+import Image from 'next/image';
 import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
@@ -64,46 +64,48 @@ function CommentNode({
   const isReply = depth > 0;
 
   return (
-    <div style={{ marginBottom: '16px', marginLeft: isReply ? '32px' : '0', paddingLeft: isReply ? '16px' : '0', borderLeft: isReply ? '2px solid #e5e7eb' : 'none' }}>
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '16px', background: '#fff' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+    <div className={`mb-4 ${isReply ? 'ml-8 pl-4 border-l-2 border-gray-200' : ''}`}>
+      <div className="border rounded-xl p-4 bg-white">
+        <div className="flex items-start gap-3">
           <div>
-            <img
+            <Image
               src={avatarRaw}
               alt={authorName}
               width={40}
               height={40}
-              style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #e5e7eb', objectFit: 'cover', background: '#f3f4f6' }}
+              className="rounded-full border object-cover bg-gray-100"
+              priority={false}
+              unoptimized
             />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <a href={`/profile/${node.user_id}`} style={{ fontWeight: 'bold', fontSize: '14px', color: '#111827', textDecoration: 'none' }}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <a href={`/profile/${node.user_id}`} className="font-bold text-sm text-gray-900 no-underline">
                 {authorName}
               </a>
-              <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>{formatDate(node.created_at)}</span>
+              <span className="text-xs text-gray-500 ml-2">{formatDate(node.created_at)}</span>
             </div>
             {parentUser && (
-              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                Replying to <span style={{ color: '#2563eb' }}>@{parentUser}</span>
+              <div className="text-xs text-gray-500 mb-1">
+                Replying to <span className="text-blue-600">@{parentUser}</span>
               </div>
             )}
-            <div style={{ marginTop: '8px' }}>
-              <p style={{ fontSize: '14px', color: '#1f2937', lineHeight: '1.6', background: '#f9fafb', borderRadius: '8px', padding: '8px 16px' }}>
+            <div className="mt-2">
+              <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-lg px-4 py-2">
                 {node.body}
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <div className="flex gap-2 mt-2">
               <button
-                style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}
+                className="text-xs text-gray-500 bg-transparent border-none cursor-pointer"
                 onClick={() => setShowReplyForm((v) => !v)}
               >
                 {showReplyForm ? "Cancel" : "Reply"}
               </button>
-              <DeleteCommentButton commentId={node.id} />
+              <DeleteCommentButton commentId={node.id} authorUserId={node.user_id} />
             </div>
             {showReplyForm && (
-              <div style={{ marginTop: '8px' }}>
+              <div className="mt-2">
                 <ReplyForm
                   articleId={articleId}
                   parentId={node.id}
@@ -112,10 +114,10 @@ function CommentNode({
               </div>
             )}
             {node.children.length > 0 && (
-              <div style={{ marginTop: '8px' }}>
+              <div className="mt-2">
                 {!showReplies ? (
                   <button
-                    style={{ color: '#2563eb', fontSize: '12px', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    className="text-blue-600 text-xs font-bold underline bg-transparent border-none cursor-pointer"
                     onClick={() => setShowReplies(true)}
                   >
                     View replies ({node.children.length})
@@ -135,7 +137,7 @@ function CommentNode({
                       ))}
                     </div>
                     <button
-                      style={{ color: '#2563eb', fontSize: '12px', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', marginTop: '4px' }}
+                      className="text-blue-600 text-xs font-bold underline bg-transparent border-none cursor-pointer mt-1"
                       onClick={() => setShowReplies(false)}
                     >
                       Hide replies
@@ -157,7 +159,7 @@ export default function CommentsListClient({ tree, profileById, articleId }: {
   articleId: number;
 }) {
   return (
-    <div style={{ marginTop: '24px' }}>
+    <div className="mt-6">
       {tree.length === 0 ? (
         <div className="comment-empty-state">
           <span>No comments yet. <a href="#comment-input">Be the first to comment!</a></span>
