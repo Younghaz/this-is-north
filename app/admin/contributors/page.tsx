@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
 type Contributor = {
@@ -10,6 +10,8 @@ type Contributor = {
   bio: string | null;
   display_name: string | null;
   email_notifications: boolean;
+  email?: string | null;
+  isPending?: boolean;
   profiles?: {
     username: string | null;
     display_name: string | null;
@@ -26,45 +28,33 @@ export default function ContributorsPage() {
   const [newContributorEmail, setNewContributorEmail] = useState('');
   const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
       // Check if user is admin
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) {
         setIsAdmin(false);
         return;
       }
-
       const { data: adminRow } = await supabase
         .from('admins')
         .select('id')
         .eq('id', auth.user.id)
         .maybeSingle();
-
       if (!adminRow) {
         setIsAdmin(false);
         return;
       }
-
       setIsAdmin(true);
-
       // Load contributors (fallback to original table only if pending table doesn't exist)
       console.log('Loading contributors...');
-      
       const { data: contributorsData, error: contributorsError } = await supabase
         .from('contributors')
         .select('*')
         .order('created_at', { ascending: false });
-
       console.log('Contributors data:', contributorsData, 'Error:', contributorsError);
-
       // Try to load pending contributors, but don't fail if table doesn't exist
       let pendingData = [];
       try {
@@ -72,7 +62,6 @@ export default function ContributorsPage() {
           .from('pending_contributors')
           .select('*')
           .order('created_at', { ascending: false });
-        
         if (!error) {
           pendingData = data || [];
         } else {
@@ -81,27 +70,28 @@ export default function ContributorsPage() {
       } catch (err) {
         console.log('Pending contributors table not available:', err);
       }
-
       // Handle contributors table errors (but allow proceeding)
       if (contributorsError && contributorsError.code !== '42P01') {
         console.error('Contributors table error:', contributorsError);
         // Continue anyway - maybe table exists but is empty
       }
-
       // Combine both lists, marking pending ones
       const allContributors = [
         ...(contributorsData || []).map(c => ({ ...c, isPending: false })),
         ...pendingData.map(c => ({ ...c, isPending: true }))
       ];
-
       console.log('All contributors:', allContributors);
       setContributors(allContributors);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } catch {
+      setError('Failed to load data');
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function addContributor() {
     if (!newContributorEmail.trim()) return;
@@ -184,7 +174,7 @@ export default function ContributorsPage() {
           .eq('id', contributorId);
       }
       loadData();
-    } catch (err) {
+    } catch {
       alert('Failed to update status');
     }
   }
@@ -205,7 +195,7 @@ export default function ContributorsPage() {
           .eq('id', contributorId);
       }
       loadData();
-    } catch (err) {
+    } catch {
       alert('Failed to remove contributor');
     }
   }
@@ -239,54 +229,27 @@ export default function ContributorsPage() {
       )}
 
       {/* Add new contributor */}
-      <div style={{
-  maxWidth: '700px',
-  margin: '2rem auto',
-  background: '#f9fafb',
-  borderRadius: '0.75rem',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-  border: '1px solid #e5e7eb',
-  padding: '2rem 2rem 1.5rem 2rem',
-}}>
-  <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.2rem', letterSpacing: '0.01em' }}>
+      <div className="max-w-2xl mx-auto my-8 bg-gray-50 rounded-xl shadow border border-gray-200 p-8 pb-6">
+  <h2 className="text-xl font-bold mb-5 tracking-wide">
     Add New Contributor
   </h2>
-  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+  <div className="flex items-center mb-4">
     <input
       type="email"
       placeholder="Enter user's email address"
       value={newContributorEmail}
       onChange={e => setNewContributorEmail(e.target.value)}
-      style={{
-        flex: 1,
-        padding: '0.7rem 1rem',
-        fontSize: '1rem',
-        border: '1px solid #d1d5db',
-        borderRadius: '0.5rem',
-        marginRight: '0.5rem',
-        background: '#fff',
-      }}
+      className="flex-1 p-3 text-base border border-gray-300 rounded-lg mr-2 bg-white"
     />
     <button
       onClick={addContributor}
       disabled={adding || !newContributorEmail.trim()}
-      style={{
-        background: adding ? '#e5e7eb' : '#2563eb',
-        color: adding ? '#888' : '#fff',
-        border: 'none',
-        borderRadius: '0.5rem',
-        padding: '0.7rem 1.5rem',
-        fontWeight: 600,
-        fontSize: '1rem',
-        cursor: adding ? 'not-allowed' : 'pointer',
-        boxShadow: adding ? 'none' : '0 1px 4px rgba(37,99,235,0.08)',
-        transition: 'background 0.2s',
-      }}
+      className={`rounded-lg px-6 py-3 font-semibold text-base transition bg-blue-600 text-white shadow ${adding ? 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none' : 'hover:bg-blue-700 cursor-pointer'}`}
     >
       {adding ? 'Adding...' : 'Add Contributor'}
     </button>
   </div>
-  <div style={{ color: '#374151', fontSize: '1rem', marginBottom: '0.5rem' }}>
+  <div className="text-gray-700 text-base mb-2">
     Contributors can write and publish articles but cannot access admin functions.
   </div>
 </div>
@@ -374,7 +337,7 @@ export default function ContributorsPage() {
             <tbody>
               {contributors.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', color: '#666' }}>
+                  <td colSpan={4} className="text-center text-gray-500">
                     No contributors yet. Add your first contributor above.
                   </td>
                 </tr>
