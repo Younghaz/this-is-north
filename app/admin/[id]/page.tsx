@@ -1,6 +1,5 @@
-import React from 'react';
-
 "use client";
+import React from 'react';
 import AdminGuard from '../../../components/AdminGuard';
 import AdminArticleForm from '../../../components/AdminArticleForm';
 

@@ -27,9 +27,9 @@ function avatarPlaceholder(name?: string | null) {
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const { slug } = params;
+  const { slug } = await params;
   const supabase = getSupabase();
 
   const { data: article } = await supabase
@@ -86,9 +86,9 @@ export async function generateMetadata({
 export default async function ArticlePage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const { slug } = params;
+  const { slug } = await params;
   const supabase = getSupabase();
 
   const { data: article, error } = await supabase
