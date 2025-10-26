@@ -65,23 +65,22 @@ export default function DeleteCommentButton({
     if (!confirm(confirmMessage)) return;
     setBusy(true);
 
-    // Fire-and-forget delete; let realtime refresh the list
-    supabase
-      .from('comments')
-      .delete()
-      .eq('id', commentId)
-      .then(({ error }) => {
-        if (error) {
-          console.error('Delete comment error:', error);
-          alert(error.message);
-        } else {
-          router.refresh();
-        }
-      })
-      .catch((e) => {
-        console.error('Delete comment exception:', e);
-        alert(e instanceof Error ? e.message : 'Failed to delete comment.');
-      });
+
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId);
+      if (error) {
+        console.error('Delete comment error:', error);
+        alert(error.message);
+      } else {
+        router.refresh();
+      }
+    } catch (e) {
+      console.error('Delete comment exception:', e);
+      alert(e instanceof Error ? e.message : 'Failed to delete comment.');
+    }
 
     // Release the button quickly so it never looks stuck
     setTimeout(() => setBusy(false), 300);
