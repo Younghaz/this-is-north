@@ -323,10 +323,10 @@ export default function ContributorsPage() {
                       <span className={`badge ${c.isPending ? 'badge-pending' : 'badge-confirmed'}`}>{c.isPending ? 'Pending' : 'Confirmed'}</span>
                     </td>
                     <td>
-                      <button onClick={() => toggleStatus(c.id ?? undefined, c.status, c.email, c.isPending)}>
+                      <button onClick={() => toggleStatus(c.id ?? undefined, c.status, c.email ?? undefined, c.isPending)}>
                         {c.status === 'active' ? 'Suspend' : 'Activate'}
                       </button>
-                      <button onClick={() => removeContributor(c.id ?? undefined, c.email, c.isPending)}>Remove</button>
+                      <button onClick={() => removeContributor(c.id ?? undefined, c.email ?? undefined, c.isPending)}>Remove</button>
                     </td>
                   </tr>
                 ))
