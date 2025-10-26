@@ -5,11 +5,11 @@ import FeedInfinite from '@/components/FeedInfinite';
 export const dynamic = 'force-dynamic';
 
 export default async function CategoryPage({ 
-  params 
-}: { 
-  params: { slug: string } 
+  params
+}: {
+  params: Promise<{ slug: string }>;
 }) {
-  const { slug } = params;
+  const { slug } = await params;
   const supabase = getSupabase();
 
   // 1️⃣ Find category
