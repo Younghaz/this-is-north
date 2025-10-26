@@ -20,7 +20,7 @@ export function loadOneSignal(): void {
   script.src = 'https://cdn.onesignal.com/sdks/OneSignalSDK.js';
   script.async = true;
   script.onload = () => {
-    win.OneSignal = win.OneSignal || [];
+  win.OneSignal = win.OneSignal || {};
     win.OneSignal.push(async function() {
       if (win.OneSignal._initCalled) return;
       win.OneSignal._initCalled = true;
