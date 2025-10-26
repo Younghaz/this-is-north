@@ -8,7 +8,7 @@ export default function AdminNewArticlePage() {
     <main className="max-w-3xl py-6">
       <AdminGuard>
         <h1 className="text-2xl font-semibold mb-4">New Article</h1>
-        <AdminArticleForm mode="create" afterSaveHref="/admin" />
+  <AdminArticleForm afterSaveHref="/admin" />
       </AdminGuard>
     </main>
   );
