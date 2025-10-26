@@ -269,7 +269,7 @@ export default function AdminArticleForm({ articleId, afterSaveHref = '/admin' }
         const { data: current } =
           articleId
             ? await supabase.from('articles').select('published_at').eq('id', articleId).maybeSingle()
-            : { data: null as { published_at?: string | null } };
+            : { data: { published_at: null } };
         const alreadyPublished = !!current?.published_at;
         if (!alreadyPublished) {
           payload.published_at = new Date().toISOString();
