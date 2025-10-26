@@ -40,7 +40,7 @@ export default function ReplyForm({ articleId, parentId, onDone }: { articleId: 
 
     supabase
       .from('comments')
-      .insert({ article_id: articleId, parent_id: parentId, user_id: userId, body: text, status: 'visible' }, { returning: 'minimal' })
+      .insert({ article_id: articleId, parent_id: parentId, user_id: userId, body: text, status: 'visible' })
       .then(({ error }) => {
         if (error) setErr(error.message);
         router.refresh();
