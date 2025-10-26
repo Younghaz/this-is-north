@@ -32,7 +32,6 @@ export default function ContributorsPage() {
     try {
       setLoading(true);
       setError(null);
-      // Check if user is admin
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) {
         setIsAdmin(false);
@@ -48,14 +47,10 @@ export default function ContributorsPage() {
         return;
       }
       setIsAdmin(true);
-      // Load contributors (fallback to original table only if pending table doesn't exist)
-      console.log('Loading contributors...');
       const { data: contributorsData, error: contributorsError } = await supabase
         .from('contributors')
         .select('*')
         .order('created_at', { ascending: false });
-      console.log('Contributors data:', contributorsData, 'Error:', contributorsError);
-      // Try to load pending contributors, but don't fail if table doesn't exist
       let pendingData = [];
       try {
         const { data, error } = await supabase
@@ -64,23 +59,17 @@ export default function ContributorsPage() {
           .order('created_at', { ascending: false });
         if (!error) {
           pendingData = data || [];
-        } else {
-          console.log('Pending contributors table not ready yet:', error.message);
         }
       } catch (err) {
-        console.log('Pending contributors table not available:', err);
+        // ignore
       }
-      // Handle contributors table errors (but allow proceeding)
       if (contributorsError && contributorsError.code !== '42P01') {
-        console.error('Contributors table error:', contributorsError);
-        // Continue anyway - maybe table exists but is empty
+        // ignore
       }
-      // Combine both lists, marking pending ones
       const allContributors = [
         ...(contributorsData || []).map(c => ({ ...c, isPending: false })),
         ...pendingData.map(c => ({ ...c, isPending: true }))
       ];
-      console.log('All contributors:', allContributors);
       setContributors(allContributors);
     } catch {
       setError('Failed to load data');
@@ -95,11 +84,8 @@ export default function ContributorsPage() {
 
   async function addContributor() {
     if (!newContributorEmail.trim()) return;
-    
     setAdding(true);
     try {
-      // Look up user by attempting to find them in existing data
-      // Check if they already exist as a contributor (in either table)
       const { data: existingContributor } = await supabase
         .from('contributors')
         .select('id')
@@ -118,27 +104,19 @@ export default function ContributorsPage() {
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
         alert('You must be logged in to add contributors');
         return;
       }
-
-      // Add to pending_contributors table (no user ID needed)
       const insertData = {
         email: newContributorEmail.trim(),
         added_by: user.id,
         status: 'active' as const
       };
-
-      console.log('Attempting to insert pending contributor:', insertData);
-      
       const { error } = await supabase
         .from('pending_contributors')
         .insert(insertData);
-
       if (error) {
-        console.error('Insert error:', error);
         if (error.code === '23505') {
           alert('User is already a contributor.');
         } else {
@@ -146,20 +124,17 @@ export default function ContributorsPage() {
         }
         return;
       }
-
       setNewContributorEmail('');
-      loadData(); // Refresh list
+      loadData();
       alert('Contributor added successfully!');
     } catch (err) {
-      console.error('Full error:', err);
       alert(err instanceof Error ? err.message : 'Failed to add contributor');
     } finally {
       setAdding(false);
     }
   }
 
-  // Update toggleStatus to handle both tables
-  async function toggleStatus(contributorId: string | null, currentStatus: string, email?: string, isPending?: boolean) {
+  async function toggleStatus(contributorId: string | undefined, currentStatus: string, email?: string, isPending?: boolean) {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
     try {
       if (isPending && email) {
@@ -179,8 +154,7 @@ export default function ContributorsPage() {
     }
   }
 
-  // Update removeContributor to handle both tables
-  async function removeContributor(contributorId: string | null, email?: string, isPending?: boolean) {
+  async function removeContributor(contributorId: string | undefined, email?: string, isPending?: boolean) {
     if (!window.confirm('Remove this contributor? They will no longer be able to publish articles.')) return;
     try {
       if (isPending && email) {
@@ -230,101 +204,98 @@ export default function ContributorsPage() {
 
       {/* Add new contributor */}
       <div className="max-w-2xl mx-auto my-8 bg-gray-50 rounded-xl shadow border border-gray-200 p-8 pb-6">
-  <h2 className="text-xl font-bold mb-5 tracking-wide">
-    Add New Contributor
-  </h2>
-  <div className="flex items-center mb-4">
-    <input
-      type="email"
-      placeholder="Enter user's email address"
-      value={newContributorEmail}
-      onChange={e => setNewContributorEmail(e.target.value)}
-      className="flex-1 p-3 text-base border border-gray-300 rounded-lg mr-2 bg-white"
-    />
-    <button
-      onClick={addContributor}
-      disabled={adding || !newContributorEmail.trim()}
-      className={`rounded-lg px-6 py-3 font-semibold text-base transition bg-blue-600 text-white shadow ${adding ? 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none' : 'hover:bg-blue-700 cursor-pointer'}`}
-    >
-      {adding ? 'Adding...' : 'Add Contributor'}
-    </button>
-  </div>
-  <div className="text-gray-700 text-base mb-2">
-    Contributors can write and publish articles but cannot access admin functions.
-  </div>
-</div>
+        <h2 className="text-xl font-bold mb-5 tracking-wide">Add New Contributor</h2>
+        <div className="flex items-center mb-4">
+          <input
+            type="email"
+            placeholder="Enter user's email address"
+            value={newContributorEmail}
+            onChange={e => setNewContributorEmail(e.target.value)}
+            className="flex-1 p-3 text-base border border-gray-300 rounded-lg mr-2 bg-white"
+          />
+          <button
+            onClick={addContributor}
+            disabled={adding || !newContributorEmail.trim()}
+            className={`rounded-lg px-6 py-3 font-semibold text-base transition bg-blue-600 text-white shadow ${adding ? 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none' : 'hover:bg-blue-700 cursor-pointer'}`}
+          >
+            {adding ? 'Adding...' : 'Add Contributor'}
+          </button>
+        </div>
+        <div className="text-gray-700 text-base mb-2">
+          Contributors can write and publish articles but cannot access admin functions.
+        </div>
+      </div>
 
       {/* Contributors list */}
       <div className="bg-white border rounded-lg overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b">
           <h2 className="text-lg font-semibold">Current Contributors ({contributors.length})</h2>
         </div>
-
         <div className="overflow-x-auto">
           <style>{`
-  .contributors-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-    font-size: 1rem;
-  }
-  .contributors-table th, .contributors-table td {
-    border: 1px solid #e5e7eb;
-    padding: 0.75rem 1rem;
-    text-align: left;
-  }
-  .contributors-table th {
-    background: #f3f4f6;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-  }
-  .contributors-table tr:nth-child(even) {
-    background: #fafafa;
-  }
-  .badge {
-    display: inline-block;
-    padding: 0.2em 0.7em;
-    border-radius: 0.5em;
-    font-size: 0.95em;
-    font-weight: 600;
-    margin-right: 0.5em;
-  }
-  .badge-active {
-    background: #e6ffed;
-    color: #059669;
-    border: 1px solid #059669;
-  }
-  .badge-suspended {
-    background: #f3f4f6;
-    color: #6b7280;
-    border: 1px solid #d1d5db;
-  }
-  .badge-pending {
-    background: #fffbe6;
-    color: #b45309;
-    border: 1px solid #fbbf24;
-  }
-  .badge-confirmed {
-    background: #e0f2fe;
-    color: #2563eb;
-    border: 1px solid #2563eb;
-  }
-  .contributors-table button {
-    background: #f3f4f6;
-    border: 1px solid #d1d5db;
-    border-radius: 0.3em;
-    padding: 0.3em 0.9em;
-    margin-right: 0.5em;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .contributors-table button:hover {
-    background: #e0e7ff;
-    border-color: #6366f1;
-    color: #3730a3;
-  }
-`}</style>
+            .contributors-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 1rem;
+              font-size: 1rem;
+            }
+            .contributors-table th, .contributors-table td {
+              border: 1px solid #e5e7eb;
+              padding: 0.75rem 1rem;
+              text-align: left;
+            }
+            .contributors-table th {
+              background: #f3f4f6;
+              font-weight: 700;
+              letter-spacing: 0.02em;
+            }
+            .contributors-table tr:nth-child(even) {
+              background: #fafafa;
+            }
+            .badge {
+              display: inline-block;
+              padding: 0.2em 0.7em;
+              border-radius: 0.5em;
+              font-size: 0.95em;
+              font-weight: 600;
+              margin-right: 0.5em;
+            }
+            .badge-active {
+              background: #e6ffed;
+              color: #059669;
+              border: 1px solid #059669;
+            }
+            .badge-suspended {
+              background: #f3f4f6;
+              color: #6b7280;
+              border: 1px solid #d1d5db;
+            }
+            .badge-pending {
+              background: #fffbe6;
+              color: #b45309;
+              border: 1px solid #fbbf24;
+            }
+            .badge-confirmed {
+              background: #e0f2fe;
+              color: #2563eb;
+              border: 1px solid #2563eb;
+            }
+            .contributors-table button {
+              background: #f3f4f6;
+              border: 1px solid #d1d5db;
+              border-radius: 0.3em;
+              padding: 0.3em 0.9em;
+              margin-right: 0.5em;
+              font-weight: 500;
+              cursor: pointer;
+              transition: background 0.2s;
+            }
+            .contributors-table button:hover {
+              background: #e0e7ff;
+              border-color: #6366f1;
+              color: #3730a3;
+            }
+          `}</style>
           <table className="contributors-table">
             <thead>
               <tr>
@@ -352,10 +323,10 @@ export default function ContributorsPage() {
                       <span className={`badge ${c.isPending ? 'badge-pending' : 'badge-confirmed'}`}>{c.isPending ? 'Pending' : 'Confirmed'}</span>
                     </td>
                     <td>
-                      <button onClick={() => toggleStatus(c.id ?? null, c.status, c.email, c.isPending)}>
+                      <button onClick={() => toggleStatus(c.id ?? undefined, c.status, c.email, c.isPending)}>
                         {c.status === 'active' ? 'Suspend' : 'Activate'}
                       </button>
-                      <button onClick={() => removeContributor(c.id ?? null, c.email, c.isPending)}>Remove</button>
+                      <button onClick={() => removeContributor(c.id ?? undefined, c.email, c.isPending)}>Remove</button>
                     </td>
                   </tr>
                 ))
