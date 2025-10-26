@@ -38,18 +38,19 @@ export default function ReplyForm({ articleId, parentId, onDone }: { articleId: 
     if (!text) return;
     setBody('');
 
-    supabase
-      .from('comments')
-      .insert({ article_id: articleId, parent_id: parentId, user_id: userId, body: text, status: 'visible' })
-      .then(({ error }) => {
-        if (error) setErr(error.message);
-        router.refresh();
-        onDone?.();
-      })
-      .catch((e) => {
-        setErr(e?.message ?? 'Failed to reply.');
-        router.refresh();
-      });
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .insert({ article_id: articleId, parent_id: parentId, user_id: userId, body: text, status: 'visible' });
+      if (error) {
+        setErr(error.message);
+      }
+      router.refresh();
+      onDone?.();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to reply.');
+      router.refresh();
+    }
   }
 
   return (
