@@ -4,11 +4,12 @@ import { getSupabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 export default async function SearchPage({ 
-  searchParams 
-}: { 
-  searchParams: Record<string, string | string[] | undefined> 
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const rawQ = Array.isArray(searchParams?.q) ? searchParams?.q[0] : searchParams?.q;
+  const resolvedParams = await searchParams;
+  const rawQ = Array.isArray(resolvedParams?.q) ? resolvedParams?.q[0] : resolvedParams?.q;
   const q = (rawQ ?? '').trim();
 
   let results:
