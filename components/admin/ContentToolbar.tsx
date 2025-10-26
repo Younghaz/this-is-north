@@ -56,7 +56,7 @@ export default function ContentToolbar({ textareaId, bucket = 'media' }: { texta
       // Upload to Supabase Storage
       const ts = Date.now();
       const path = `articles/${ts}-${file.name}`;
-      const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
         contentType,
         upsert: false,
         cacheControl: '3600',
@@ -64,8 +64,7 @@ export default function ContentToolbar({ textareaId, bucket = 'media' }: { texta
       if (error) throw error;
 
       // Prefer public URL (make bucket public in Dashboard)
-      const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
-      const publicUrl = pub?.publicUrl;
+  const { publicUrl } = supabase.storage.from(bucket).getPublicUrl(path).data ?? {};
 
       if (!publicUrl) {
         // Fallback: signed URL for private buckets (1h)
@@ -79,9 +78,15 @@ export default function ContentToolbar({ textareaId, bucket = 'media' }: { texta
       } else {
         insertVideo(publicUrl);
       }
-    } catch (err: any) {
-      console.error(err);
-      setMsg(err?.message ?? 'Upload failed.');
+
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error(err);
+        setMsg(err.message ?? 'Upload failed.');
+      } else {
+        console.error('Unknown error', err);
+        setMsg('Upload failed.');
+      }
     }
   }
 

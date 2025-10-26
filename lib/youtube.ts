@@ -26,7 +26,8 @@ export function parseYouTubeInput(input: string): { id: string; embedUrl: string
 }
 
 // Returns a responsive iframe block for a video id
-export function youtubeEmbedBlock(id: string, heightPx = 360): string {
+// Returns a responsive iframe block for a YouTube video id
+export function youtubeEmbedBlock(id: string): string {
   const src = `https://www.youtube.com/embed/${id}`;
   return `
 <div style="position:relative;width:100%;padding-top:56.25%;overflow:hidden;border-radius:8px;">

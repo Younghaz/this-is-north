@@ -27,9 +27,9 @@ function avatarPlaceholder(name?: string | null) {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: { slug: string };
 }) {
-  const { slug } = await params;
+  const { slug } = params;
   const supabase = getSupabase();
 
   const { data: article } = await supabase
@@ -86,9 +86,9 @@ export async function generateMetadata({
 export default async function ArticlePage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: { slug: string };
 }) {
-  const { slug } = await params;
+  const { slug } = params;
   const supabase = getSupabase();
 
   const { data: article, error } = await supabase
@@ -187,8 +187,6 @@ export default async function ArticlePage({
   // Ensure every userId in comments has a profile entry (fallback if missing)
   for (const userId of userIds) {
     if (!profileById.has(userId)) {
-      // Find a comment by this user to get email if available
-      const comment = allComments.find(c => c.user_id === userId);
       profileById.set(userId, {
         id: userId,
         username: null,
@@ -249,11 +247,14 @@ export default async function ArticlePage({
           </div>
         ) : heroSrc ? (
           <div className="article-cover-image-container">
-            <img
-              src={heroSrc}
-              alt={coverAlt}
-              className="article-cover-image"
-            />
+            <Image
+  src={heroSrc}
+  alt={coverAlt}
+  className="article-cover-image"
+  width={1920}      // actual width
+  height={1080}     // actual height
+/>
+
           </div>
         ) : null}
         {/* 💬 Actions */}

@@ -14,7 +14,7 @@ export default function ReplyForm({ articleId, parentId, onDone }: { articleId: 
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
+  const mounted = true;
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (!mounted) return;

@@ -26,7 +26,7 @@ export default function ViewTracker({ articleId }: { articleId: number }) {
     const id = window.requestIdleCallback ? window.requestIdleCallback(trySend) : window.setTimeout(trySend, 0);
     return () => {
       if (typeof id === 'number') window.clearTimeout(id);
-      else if (id && 'cancelIdleCallback' in window) (window as any).cancelIdleCallback(id);
+  else if (id && 'cancelIdleCallback' in window) (window as unknown as { cancelIdleCallback: (handle: number) => void }).cancelIdleCallback(id);
     };
   }, [articleId]);
 

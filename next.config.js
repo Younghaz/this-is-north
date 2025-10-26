@@ -1,8 +1,7 @@
-const path = require('path');
-
-module.exports = {
-  webpack: (config) => {
-    config.resolve.alias['@'] = path.resolve(__dirname);
-    return config;
-  },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  webpack: (config) => config, // keep existing Webpack config
+  turbopack: false,           // disable Turbopack
 };
+
+module.exports = nextConfig;

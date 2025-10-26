@@ -2,8 +2,8 @@ import { getSupabase } from '@/lib/supabase';
 import ProfilePageClient from './ProfilePageClient';
 
 // --- 🧠 SEO Metadata ---
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = await params;
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const resolvedParams = params;
   const supabase = getSupabase();
   const { data: profile } = await supabase
     .from('profiles')
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 // --- 🚀 Server entrypoint ---
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = await params;
+export default async function Page({ params }: { params: { id: string } }) {
+  const resolvedParams = params;
   return <ProfilePageClient id={resolvedParams.id} />;
 }

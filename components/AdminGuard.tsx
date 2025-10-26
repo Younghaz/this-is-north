@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { getBrowserSupabase } from '../lib/supabase-browser';
 
 export default function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -14,7 +14,6 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     let mounted = true;
-    let timeoutId: NodeJS.Timeout;
 
     (async () => {
       try {
@@ -62,14 +61,16 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
       }
     })();
 
-    timeoutId = setTimeout(() => {
+
+    const timeoutId = setTimeout(() => {
       if (mounted) {
         console.log('AdminGuard: Timeout reached, stopping loading');
         setLoading(false);
       }
     }, 4000);
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, _session) => {
+
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
       router.refresh();
     });
 

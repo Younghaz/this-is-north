@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { getBrowserSupabase } from '../lib/supabase-browser';
 
@@ -19,7 +19,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  async function load() {
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     const { data, error } = await supabase
@@ -30,11 +31,12 @@ export default function AdminDashboard() {
     if (error) setError(error.message);
     setItems((data as unknown as Article[]) ?? []);
     setLoading(false);
-  }
+  }, [supabase]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
+
 
   async function onDelete(id: number, title: string) {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
